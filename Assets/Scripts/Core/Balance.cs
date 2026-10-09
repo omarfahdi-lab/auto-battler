@@ -52,5 +52,12 @@ namespace AutoBattler.Core
 
         public static int ShopOdds(int level, int cost) =>
             cost < 1 || cost > 3 ? 0 : ShopOddsByLevel[Math.Max(1, Math.Min(level, MaxLevel)) - 1][cost - 1];
+
+        // ---- Synergies (2 and 4 units of a class) ---------------------------------------------------------------
+        public static readonly int[] SynergyThresholds = { 2, 4 };
+        public static readonly StatBonus[] WarriorSynergy = { new StatBonus(armorPct: 15), new StatBonus(armorPct: 30) };
+        public static readonly StatBonus[] ArcherSynergy = { new StatBonus(attackSpeedPct: 25), new StatBonus(attackSpeedPct: 50) };
+        public static readonly StatBonus[] LancerSynergy = { new StatBonus(hpPct: 20), new StatBonus(hpPct: 40) };
+        public static readonly StatBonus[] MonkSynergy = { new StatBonus(healPct: 30), new StatBonus(healPct: 60) };
     }
 }

@@ -134,7 +134,7 @@ namespace AutoBattler.Core
 
         private void StartAction(Combatant c, Combatant target, List<BattleEvent> events)
         {
-            c.Cooldown = c.Definition.ActionCooldown;
+            c.Cooldown = c.Stats.ActionCooldown;
             c.PendingTargetId = target.Id;
             c.PendingImpactTick = Tick + c.Definition.ImpactTicks;
             events.Add(BattleEvent.ActionStart(c.Id, target.Id, c.Position, target.Position));
@@ -181,9 +181,12 @@ namespace AutoBattler.Core
             }
         }
 
+        /// <summary>Damage after armor: at least 1, at most the target's remaining HP.</summary>
+        public static int Mitigate(int power, int armorPct) => Math.Max(1, power * (100 - armorPct) / 100);
+
         private void ApplyDamage(int sourceId, Combatant target, int power, List<BattleEvent> events)
         {
-            int damage = Math.Min(power, target.Hp);
+            int damage = Math.Min(Mitigate(power, target.Stats.ArmorPct), target.Hp);
             target.Hp -= damage;
             events.Add(BattleEvent.Damage(sourceId, target.Id, damage));
 

@@ -101,6 +101,13 @@ namespace AutoBattler.Core
             else _board[slot.Index] = unit;
         }
 
+        /// <summary>Class synergies for the units currently on the board (inactive ones included).</summary>
+        public IReadOnlyList<ActiveSynergy> ActiveSynergies => Synergies.Evaluate(_board);
+
+        /// <summary>Every bonus that applies to one of the player's units in battle.</summary>
+        public StatBonus BonusFor(OwnedUnit unit, IReadOnlyList<ActiveSynergy> synergies) =>
+            Synergies.BonusFor(unit.Definition, synergies);
+
         public int BoardCount
         {
             get
@@ -219,11 +226,22 @@ namespace AutoBattler.Core
 
             var combatants = new List<Combatant>();
             int id = 0;
+            var synergies = ActiveSynergies;
             for (int i = 0; i < _board.Length; i++)
-                if (_board[i] != null)
-                    combatants.Add(new Combatant(id++, Team.Player, _board[i], BoardLayout.PlayerIndexToPos(i)));
-            foreach (var enemy in EnemyWaves.Generate(Round, _rng))
-                combatants.Add(new Combatant(id++, Team.Enemy, enemy.Unit, enemy.Position));
+            {
+                var unit = _board[i];
+                if (unit == null) continue;
+                combatants.Add(new Combatant(id++, Team.Player, unit, BoardLayout.PlayerIndexToPos(i),
+                    CombatStats.For(unit, BonusFor(unit, synergies))));
+            }
+
+            var wave = EnemyWaves.Generate(Round, _rng);
+            var waveUnits = new List<OwnedUnit>();
+            foreach (var enemy in wave) waveUnits.Add(enemy.Unit);
+            var enemySynergies = Synergies.Evaluate(waveUnits);
+            foreach (var enemy in wave)
+                combatants.Add(new Combatant(id++, Team.Enemy, enemy.Unit, enemy.Position,
+                    CombatStats.For(enemy.Unit, Synergies.BonusFor(enemy.Unit.Definition, enemySynergies))));
 
             Phase = Phase.Battle;
             return new BattleSimulator(combatants);

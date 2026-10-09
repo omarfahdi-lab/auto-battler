@@ -21,20 +21,31 @@ namespace AutoBattler.Core
         internal int PendingTargetId { get; set; } = -1;
         internal int PendingImpactTick { get; set; }
 
+        public CombatStats Stats { get; }
+        /// <summary>Boss units are drawn larger; their stat bonus is already in <see cref="Stats"/>.</summary>
+        public bool IsBoss { get; }
+
         public Combatant(int id, Team team, OwnedUnit unit, GridPos position)
+            : this(id, team, unit, position, CombatStats.For(unit, default))
+        {
+        }
+
+        public Combatant(int id, Team team, OwnedUnit unit, GridPos position, CombatStats stats, bool isBoss = false)
         {
             Id = id;
             Team = team;
             Unit = unit;
             Position = position;
-            Hp = unit.MaxHp;
+            Stats = stats;
+            IsBoss = isBoss;
+            Hp = stats.MaxHp;
         }
 
         public UnitDefinition Definition => Unit.Definition;
         public bool IsAlive => Hp > 0;
         public bool IsActing => PendingTargetId >= 0;
-        public int MaxHp => Unit.MaxHp;
-        public int Power => Unit.Power;
+        public int MaxHp => Stats.MaxHp;
+        public int Power => Stats.Power;
         public int Range => Unit.Definition.Range;
     }
 }
