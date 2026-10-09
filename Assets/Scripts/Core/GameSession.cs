@@ -240,8 +240,12 @@ namespace AutoBattler.Core
             foreach (var enemy in wave) waveUnits.Add(enemy.Unit);
             var enemySynergies = Synergies.Evaluate(waveUnits);
             foreach (var enemy in wave)
+            {
+                var bonus = Synergies.BonusFor(enemy.Unit.Definition, enemySynergies);
+                if (enemy.IsBoss) bonus += Balance.BossBonus;
                 combatants.Add(new Combatant(id++, Team.Enemy, enemy.Unit, enemy.Position,
-                    CombatStats.For(enemy.Unit, Synergies.BonusFor(enemy.Unit.Definition, enemySynergies))));
+                    CombatStats.For(enemy.Unit, bonus), enemy.IsBoss));
+            }
 
             Phase = Phase.Battle;
             return new BattleSimulator(combatants);

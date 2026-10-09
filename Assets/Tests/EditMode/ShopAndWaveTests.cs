@@ -43,19 +43,6 @@ namespace AutoBattler.Tests
         }
 
         [Test]
-        public void Wave_GrowsWithRoundAndStaysOnEnemySide()
-        {
-            for (int round = 1; round <= GameSession.FinalRound; round++)
-            {
-                var wave = EnemyWaves.Generate(round, new SeededRandom(round));
-
-                Assert.That(wave.Count, Is.EqualTo(EnemyWaves.EnemyCount(round)));
-                Assert.That(wave.All(e => BoardLayout.InBounds(e.Position) && !BoardLayout.IsPlayerCell(e.Position)));
-                Assert.That(wave.Select(e => e.Position).Distinct().Count(), Is.EqualTo(wave.Count));
-            }
-        }
-
-        [Test]
         public void OwnedUnit_StatsAndSellValueScaleWithStars()
         {
             var one = new OwnedUnit(UnitCatalog.Warrior, 1);

@@ -59,5 +59,25 @@ namespace AutoBattler.Core
         public static readonly StatBonus[] ArcherSynergy = { new StatBonus(attackSpeedPct: 25), new StatBonus(attackSpeedPct: 50) };
         public static readonly StatBonus[] LancerSynergy = { new StatBonus(hpPct: 20), new StatBonus(hpPct: 40) };
         public static readonly StatBonus[] MonkSynergy = { new StatBonus(healPct: 30), new StatBonus(healPct: 60) };
+    
+        // ---- Enemy waves -------------------------------------------------------------------------------------
+        /// <summary>Enemy power per round (cost x copies, the same scale as gold spent), indexed by round.</summary>
+        private static readonly int[] EnemyBudgetByRound = { 0, 3, 5, 7, 9, 14, 15, 18, 22, 26, 36 };
+        /// <summary>Number of non-boss enemies before leftover budget is spent, indexed by round.</summary>
+        private static readonly int[] EnemyCountByRound = { 0, 2, 3, 3, 4, 3, 5, 5, 6, 6, 4 };
+
+        public static readonly int[] BossRounds = { 5, 10 };
+        /// <summary>Extra stats for boss units on top of their star level.</summary>
+        public static readonly StatBonus BossBonus = new StatBonus(hpPct: 50, powerPct: 25);
+
+        public static int EnemyBudget(int round) => EnemyBudgetByRound[Clamp(round)];
+        public static int EnemyUnitCount(int round) => EnemyCountByRound[Clamp(round)];
+        public static int EnemyMaxCost(int round) => round <= 2 ? 2 : 3;
+        public static int EnemyMaxStars(int round) => round <= 2 ? 1 : round <= 7 ? 2 : 3;
+
+        /// <summary>Round 5: a 2-star Lancer. Round 10: a 3-star Lancer.</summary>
+        public static OwnedUnit BossFor(int round) => new OwnedUnit(UnitCatalog.Lancer, round >= 10 ? 3 : 2);
+
+        private static int Clamp(int round) => Math.Max(1, Math.Min(round, FinalRound));
     }
 }
