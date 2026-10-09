@@ -113,3 +113,8 @@ InitTestScene*.unity*
 *.csproj
 *.slnx
 *.sln
+
+# Balance sim console tool (keep its project file, ignore build output)
+!Tools/**/*.csproj
+Tools/**/bin/
+Tools/**/obj/

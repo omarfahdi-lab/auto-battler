@@ -1,7 +1,9 @@
 {
     "name": "AutoBattler.Editor",
     "rootNamespace": "AutoBattler.Editor",
-    "references": [],
+    "references": [
+        "AutoBattler.Core"
+    ],
     "includePlatforms": [
         "Editor"
     ],
