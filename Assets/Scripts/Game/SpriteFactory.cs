@@ -1,0 +1,63 @@
+using UnityEngine;
+
+namespace AutoBattler.Game
+{
+    /// <summary>Generates white placeholder sprites at runtime; tint them with SpriteRenderer.color.</summary>
+    public static class SpriteFactory
+    {
+        private const int Size = 64;
+        private static Sprite _square;
+        private static Sprite _circle;
+
+        public static Sprite Square => _square != null ? _square : _square = Create(circle: false);
+        public static Sprite Circle => _circle != null ? _circle : _circle = Create(circle: true);
+
+        private static Sprite Create(bool circle)
+        {
+            var tex = new Texture2D(Size, Size, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+            var pixels = new Color32[Size * Size];
+            float r = Size / 2f;
+            for (int y = 0; y < Size; y++)
+            for (int x = 0; x < Size; x++)
+            {
+                byte a = 255;
+                if (circle)
+                {
+                    float dx = x + 0.5f - r, dy = y + 0.5f - r;
+                    // One pixel of soft edge for cheap anti-aliasing.
+                    a = (byte)(Mathf.Clamp01(r - Mathf.Sqrt(dx * dx + dy * dy)) * 255);
+                }
+                pixels[y * Size + x] = new Color32(255, 255, 255, a);
+            }
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, Size, Size), new Vector2(0.5f, 0.5f), Size);
+        }
+
+        public static SpriteRenderer AddRenderer(GameObject go, Sprite sprite, Color color, int order)
+        {
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.color = color;
+            sr.sortingOrder = order;
+            return sr;
+        }
+
+        public static SpriteRenderer CreateChild(Transform parent, string name, Sprite sprite, Color color, int order,
+            Vector3 localPos, Vector2 scale)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = new Vector3(scale.x, scale.y, 1f);
+            return AddRenderer(go, sprite, color, order);
+        }
+
+        public static Color FromRgb(int rgb) =>
+            new Color(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f);
+    }
+}
