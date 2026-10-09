@@ -10,6 +10,8 @@ namespace AutoBattler.Core
 
         public UnitDefinition Definition { get; }
         public int Stars { get; }
+        /// <summary>Equipped item, or null. Managed by <see cref="GameSession"/>.</summary>
+        public ItemDefinition Item { get; internal set; }
 
         public OwnedUnit(UnitDefinition definition, int stars = 1)
         {

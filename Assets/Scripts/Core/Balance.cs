@@ -79,5 +79,36 @@ namespace AutoBattler.Core
         public static OwnedUnit BossFor(int round) => new OwnedUnit(UnitCatalog.Lancer, round >= 10 ? 3 : 2);
 
         private static int Clamp(int round) => Math.Max(1, Math.Min(round, FinalRound));
+    
+        // ---- Rewards -----------------------------------------------------------------------------------------
+        public static readonly ItemDefinition[] Items =
+        {
+            new ItemDefinition("sword", "Sword", ItemStat.Attack, new StatBonus(powerPct: 25), greater: false),
+            new ItemDefinition("heart", "Heart Amulet", ItemStat.Hp, new StatBonus(hpPct: 30), greater: false),
+            new ItemDefinition("gloves", "Swift Gloves", ItemStat.AttackSpeed, new StatBonus(attackSpeedPct: 25), greater: false),
+        };
+
+        public static readonly ItemDefinition[] GreaterItems =
+        {
+            new ItemDefinition("great-sword", "Great Sword", ItemStat.Attack, new StatBonus(powerPct: 55), greater: true),
+            new ItemDefinition("dragon-heart", "Dragon Heart", ItemStat.Hp, new StatBonus(hpPct: 65), greater: true),
+            new ItemDefinition("storm-gloves", "Storm Gloves", ItemStat.AttackSpeed, new StatBonus(attackSpeedPct: 55), greater: true),
+        };
+
+        public static readonly AugmentDefinition[] Augments =
+        {
+            new AugmentDefinition("rally", "Rally", new StatBonus(powerPct: 10), 0, greater: false),
+            new AugmentDefinition("fortify", "Fortify", new StatBonus(hpPct: 12), 0, greater: false),
+            new AugmentDefinition("haste", "Haste", new StatBonus(attackSpeedPct: 10), 0, greater: false),
+            new AugmentDefinition("treasury", "Treasury", default, 2, greater: false),
+        };
+
+        public static readonly AugmentDefinition[] GreaterAugments =
+        {
+            new AugmentDefinition("war-cry", "War Cry", new StatBonus(powerPct: 22), 0, greater: true),
+            new AugmentDefinition("bastion", "Bastion", new StatBonus(hpPct: 25), 0, greater: true),
+            new AugmentDefinition("frenzy", "Frenzy", new StatBonus(attackSpeedPct: 22), 0, greater: true),
+            new AugmentDefinition("royal-treasury", "Royal Treasury", default, 4, greater: true),
+        };
     }
 }

@@ -125,9 +125,7 @@ namespace AutoBattler.Tests
         {
             for (int i = 0; i < rounds; i++)
             {
-                var battle = s.StartBattle();
-                battle.RunToEnd();
-                s.CompleteBattle(battle);
+                TestRuns.PlayRound(s);
                 Assert.That(s.Phase, Is.EqualTo(Phase.Shop));
             }
         }
@@ -209,6 +207,8 @@ namespace AutoBattler.Tests
             Assert.That(s.TryBuy(1), Is.False, "shop is closed during battle");
             battle.RunToEnd();
             var result = s.CompleteBattle(battle);
+            Assert.That(s.Phase, Is.EqualTo(result.Won ? Phase.Reward : Phase.Shop));
+            if (s.Phase == Phase.Reward) s.ChooseReward(0);
 
             if (result.Won)
             {
@@ -233,12 +233,7 @@ namespace AutoBattler.Tests
             s.TryBuy(0);
             s.TryMove(Slot.Bench(0), Slot.Board(new GridPos(0, 0)));
 
-            for (int i = 0; i < 50 && s.Phase == Phase.Shop; i++)
-            {
-                var battle = s.StartBattle();
-                battle.RunToEnd();
-                s.CompleteBattle(battle);
-            }
+            for (int i = 0; i < 50 && !TestRuns.IsOver(s); i++) TestRuns.PlayRound(s);
 
             Assert.That(s.Phase, Is.EqualTo(Phase.Defeat).Or.EqualTo(Phase.Victory));
         }

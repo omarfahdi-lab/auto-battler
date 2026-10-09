@@ -171,6 +171,29 @@ namespace AutoBattler.Game
 
         public static Texture2D Icon(int number) => Texture($"{Ui}Icons/Icon_{number:00}");
 
+        // Pack icons: 03 coin, 04 meat (health), 05 sword, 06 shield, 07 green gem (speed).
+        public static Texture2D IconFor(ItemDefinition item) => Icon(StatIcon(item.Bonus));
+
+        public static Texture2D IconFor(AugmentDefinition augment) =>
+            augment.GoldPerRound > 0 ? Icon(3) : Icon(StatIcon(augment.TeamBonus));
+
+        public static Texture2D IconFor(RewardOption option) =>
+            option.Kind == RewardKind.Item ? IconFor(option.Item) : IconFor(option.Augment);
+
+        private static int StatIcon(StatBonus bonus) =>
+            bonus.HpPct > 0 ? 4 : bonus.AttackSpeedPct > 0 ? 7 : bonus.ArmorPct > 0 ? 6 : 5;
+
+        private static readonly Dictionary<Texture2D, Sprite> IconSprites = new Dictionary<Texture2D, Sprite>();
+
+        /// <summary>World-space sprite for an icon (e.g. the item badge on a unit).</summary>
+        public static Sprite IconSprite(Texture2D icon)
+        {
+            if (!IconSprites.TryGetValue(icon, out var sprite))
+                IconSprites[icon] = sprite = Sprite.Create(icon, new Rect(0, 0, icon.width, icon.height),
+                    new Vector2(0.5f, 0.5f), PixelsPerUnit);
+            return sprite;
+        }
+
         public static SlicedTexture WoodPanel() => Stitch(Ui + "Wood Table/WoodTable");
         public static SlicedTexture Paper() => Stitch(Ui + "Papers/RegularPaper");
         public static SlicedTexture BigButton(bool red, bool pressed) =>

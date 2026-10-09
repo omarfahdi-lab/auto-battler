@@ -33,14 +33,21 @@ namespace AutoBattler.Game
         private float _hitTimer;
         private bool _dying;
 
-        public static UnitView Create(Transform parent, OwnedUnit unit, Team team, Vector3 position)
+        /// <summary>Bosses are drawn larger so they read as the centrepiece of the wave.</summary>
+        private const float BossScale = 1.35f;
+
+        private float _baseScale = 1f;
+
+        public static UnitView Create(Transform parent, OwnedUnit unit, Team team, Vector3 position, bool isBoss = false)
         {
-            var go = new GameObject($"{team} {unit}");
+            var go = new GameObject($"{team} {unit}{(isBoss ? " (boss)" : "")}");
             go.transform.SetParent(parent, false);
             go.transform.position = position;
             var view = go.AddComponent<UnitView>();
             view.Build(unit, team);
             view._target = position;
+            view._baseScale = isBoss ? BossScale : 1f;
+            go.transform.localScale = Vector3.one * view._baseScale;
             return view;
         }
 
@@ -60,6 +67,12 @@ namespace AutoBattler.Game
 
             BuildHpBar(team);
             BuildStars(unit.Stars);
+            if (unit.Item != null)
+            {
+                // Item badge to the left of the HP bar.
+                SpriteFactory.CreateChild(transform, "Item", Art.IconSprite(Art.IconFor(unit.Item)), Color.white, 14,
+                    new Vector3(-BarWidth / 2f - 0.12f, BarY, 0f), Vector2.one * 0.42f);
+            }
             UpdateSorting();
         }
 
@@ -146,7 +159,7 @@ namespace AutoBattler.Game
 
         public void Hit() => _hitTimer = 0.12f;
 
-        public void SetSelected(bool selected) => transform.localScale = Vector3.one * (selected ? 1.12f : 1f);
+        public void SetSelected(bool selected) => transform.localScale = Vector3.one * _baseScale * (selected ? 1.12f : 1f);
 
         public void Die()
         {

@@ -28,6 +28,7 @@ namespace AutoBattler.Game
         private readonly Dictionary<Slot, UnitView> _slotViews = new Dictionary<Slot, UnitView>();
         private readonly Dictionary<int, UnitView> _battleViews = new Dictionary<int, UnitView>();
         private Slot? _selected;
+        private int _selectedItem = -1;
 
         private BattleSimulator _battle;
         private float _tickTimer;
@@ -52,6 +53,9 @@ namespace AutoBattler.Game
             _hud.SellClicked += SellSelected;
             _hud.FightClicked += StartBattle;
             _hud.RestartClicked += NewRun;
+            _hud.BuyXpClicked += BuyXp;
+            _hud.ItemClicked += SelectItem;
+            _hud.RewardChosen += ChooseReward;
 
             NewRun();
         }
@@ -61,7 +65,9 @@ namespace AutoBattler.Game
             _session = new GameSession(new SeededRandom(_seed++));
             _battle = null;
             _selected = null;
+            _selectedItem = -1;
             ClearBattleViews();
+            _hud.HideRewards();
             _hud.SetMessage("Buy units and place them on the blue side.");
             RefreshShopPhase();
         }
@@ -153,6 +159,37 @@ namespace AutoBattler.Game
             if (_session.TryReroll()) RefreshShopPhase();
         }
 
+        private void BuyXp()
+        {
+            int level = _session.Level;
+            if (!_session.TryBuyXp()) return;
+            if (_session.Level > level)
+                _hud.SetMessage($"Level {_session.Level}! You can field {_session.BoardCapacity} units, and 3g units show up more often.");
+            RefreshShopPhase();
+        }
+
+        private void SelectItem(int index)
+        {
+            if (_session.Phase != Phase.Shop) return;
+            _selected = null;
+            _selectedItem = _selectedItem == index ? -1 : index;
+            if (_selectedItem >= 0) _hud.SetMessage($"Click a unit to give it the {_session.Inventory[index].Name}.");
+            RefreshShopPhase();
+        }
+
+        private void ChooseReward(int index)
+        {
+            var options = _session.PendingRewards;
+            if (index < 0 || index >= options.Count) return;
+            var choice = options[index];
+            if (!_session.ChooseReward(index)) return;
+            _hud.HideRewards();
+            _hud.SetMessage(choice.Kind == RewardKind.Item
+                ? $"Got the {choice.Name}. Click it under Items, then a unit to equip it."
+                : $"{choice.Name} is active for the rest of the run.");
+            RefreshShopPhase();
+        }
+
         private void SellSelected()
         {
             if (_selected.HasValue && _session.TrySell(_selected.Value))
@@ -166,7 +203,14 @@ namespace AutoBattler.Game
         {
             if (_session.Phase != Phase.Shop) return;
 
-            if (_selected.HasValue)
+            if (_selectedItem >= 0)
+            {
+                var item = _session.Inventory[_selectedItem];
+                if (_session.TryEquip(_selectedItem, slot))
+                    _hud.SetMessage($"{_session.Get(slot).Definition.Name} equipped the {item.Name}.");
+                _selectedItem = -1;
+            }
+            else if (_selected.HasValue)
             {
                 var from = _selected.Value;
                 _selected = null;
@@ -199,7 +243,7 @@ namespace AutoBattler.Game
 
             _highlight.enabled = _selected.HasValue;
             if (_selected.HasValue) _highlight.transform.position = SlotToWorld(_selected.Value);
-            _hud.Refresh(_session, _selected.HasValue ? _session.Get(_selected.Value) : null);
+            _hud.Refresh(_session, _selected.HasValue ? _session.Get(_selected.Value) : null, _selectedItem);
         }
 
         // ---- Battle phase -------------------------------------------------------------------------------------
@@ -214,16 +258,19 @@ namespace AutoBattler.Game
             }
 
             _selected = null;
+            _selectedItem = -1;
             RefreshShopPhase(); // clears shop-phase views since the phase is now Battle
             foreach (var c in _battle.Combatants)
             {
-                var view = UnitView.Create(_unitRoot, c.Unit, c.Team, CellToWorld(c.Position));
+                var view = UnitView.Create(_unitRoot, c.Unit, c.Team, CellToWorld(c.Position), c.IsBoss);
                 view.SetHealth(c.Hp, c.MaxHp);
                 _battleViews[c.Id] = view;
             }
             _tickTimer = 0f;
             _endTimer = EndOfBattlePause;
-            _hud.SetMessage($"Round {_session.Round}: fight!");
+            _hud.SetMessage(EnemyWaves.IsBossRound(_session.Round)
+                ? $"Round {_session.Round}: BOSS FIGHT!"
+                : $"Round {_session.Round}: fight!");
         }
 
         private void UpdateBattle()
@@ -242,10 +289,13 @@ namespace AutoBattler.Game
             _endTimer -= Time.deltaTime;
             if (_endTimer > 0f) return;
 
+            int round = _session.Round;
             var result = _session.CompleteBattle(_battle);
             _battle = null;
             ClearBattleViews();
             _hud.SetMessage(Describe(result));
+            if (_session.Phase == Phase.Reward)
+                _hud.ShowRewards(_session.PendingRewards, bossReward: EnemyWaves.IsBossRound(round));
             RefreshShopPhase();
         }
 
@@ -304,12 +354,21 @@ namespace AutoBattler.Game
         {
             switch (_session.Phase)
             {
-                case Phase.Victory: return "VICTORY! You survived every round.";
-                case Phase.Defeat: return $"DEFEAT. You lost {result.DamageTaken} health and fell in round {_session.Round}.";
+                case Phase.Victory: return "VICTORY! You beat the final boss.";
+                case Phase.Defeat:
+                    return _session.Health > 0
+                        ? "DEFEAT. The final boss held the field."
+                        : $"DEFEAT. You lost {result.DamageTaken} health and fell in round {_session.Round}.";
                 default:
+                    string income = $"+{result.GoldEarned}g ({Balance.BaseIncome} base";
+                    if (result.Interest > 0) income += $", {result.Interest} interest";
+                    if (result.StreakBonus > 0) income += $", {result.StreakBonus} streak";
+                    int augmentGold = result.GoldEarned - Balance.BaseIncome - result.Interest - result.StreakBonus;
+                    if (augmentGold > 0) income += $", {augmentGold} augments";
+                    income += ")";
                     return result.Won
-                        ? $"Round won! +{result.GoldEarned} gold."
-                        : $"Round lost: -{result.DamageTaken} health, +{result.GoldEarned} gold.";
+                        ? $"Round won! {income}"
+                        : $"Round lost: -{result.DamageTaken} health. {income}";
             }
         }
 
@@ -326,12 +385,22 @@ namespace AutoBattler.Game
         private void HandleKeyboard()
         {
             var kb = Keyboard.current;
-            if (kb == null || _session.Phase != Phase.Shop) return;
+            if (kb == null) return;
+
+            if (_session.Phase == Phase.Reward)
+            {
+                for (int i = 0; i < _session.PendingRewards.Count; i++)
+                    if (kb[Key.Digit1 + i].wasPressedThisFrame || kb[Key.Numpad1 + i].wasPressedThisFrame)
+                        ChooseReward(i);
+                return;
+            }
+            if (_session.Phase != Phase.Shop) return;
 
             for (int i = 0; i < Shop.SlotCount; i++)
                 if (kb[Key.Digit1 + i].wasPressedThisFrame || kb[Key.Numpad1 + i].wasPressedThisFrame)
                     Buy(i);
             if (kb.rKey.wasPressedThisFrame) Reroll();
+            if (kb.fKey.wasPressedThisFrame) BuyXp();
             if (kb.sKey.wasPressedThisFrame) SellSelected();
             if (kb.spaceKey.wasPressedThisFrame) StartBattle();
             if (kb.escapeKey.wasPressedThisFrame) Deselect();
@@ -360,8 +429,9 @@ namespace AutoBattler.Game
 
         private void Deselect()
         {
-            if (!_selected.HasValue) return;
+            if (!_selected.HasValue && _selectedItem < 0) return;
             _selected = null;
+            _selectedItem = -1;
             RefreshShopPhase();
         }
     }

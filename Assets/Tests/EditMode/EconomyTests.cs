@@ -51,14 +51,14 @@ namespace AutoBattler.Tests
             for (int round = 0; round < 3 && s.Phase == Phase.Shop; round++)
             {
                 int goldBefore = s.Gold;
-                var battle = s.StartBattle();
-                battle.RunToEnd();
-                var result = s.CompleteBattle(battle);
+                int augmentGold = s.AugmentGoldPerRound; // a reward picked after this round pays from the next one
+                var result = TestRuns.PlayRound(s);
                 if (s.Phase != Phase.Shop) break;
 
                 int expectedStreak = result.Won ? Math.Max(previousStreak, 0) + 1 : Math.Min(previousStreak, 0) - 1;
                 Assert.That(s.Streak, Is.EqualTo(expectedStreak));
-                Assert.That(result.GoldEarned, Is.EqualTo(GameSession.Income(goldBefore, expectedStreak, out _, out _)));
+                Assert.That(result.GoldEarned,
+                    Is.EqualTo(GameSession.Income(goldBefore, expectedStreak, out _, out _) + augmentGold));
                 Assert.That(s.Gold, Is.EqualTo(goldBefore + result.GoldEarned));
                 previousStreak = expectedStreak;
             }
@@ -98,9 +98,7 @@ namespace AutoBattler.Tests
             s.Shop.Set(0, UnitCatalog.Warrior);
             s.TryBuy(0);
             s.TryMove(Slot.Bench(0), Slot.Board(new GridPos(3, 2)));
-            var battle = s.StartBattle();
-            battle.RunToEnd();
-            s.CompleteBattle(battle);
+            TestRuns.PlayRound(s);
 
             Assert.That(s.Level, Is.EqualTo(2), "two passive XP reach level 2");
         }

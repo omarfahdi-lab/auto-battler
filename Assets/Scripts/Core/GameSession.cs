@@ -7,6 +7,8 @@ namespace AutoBattler.Core
     {
         Shop,
         Battle,
+        /// <summary>After a win: choose one of <see cref="GameSession.PendingRewards"/> before shopping.</summary>
+        Reward,
         Victory,
         Defeat,
     }
@@ -44,7 +46,7 @@ namespace AutoBattler.Core
     {
         public readonly bool Won;
         public readonly int DamageTaken;
-        /// <summary>Total income for the next round (base + interest + streak).</summary>
+        /// <summary>Total income for the next round (base + interest + streak + augments).</summary>
         public readonly int GoldEarned;
         public readonly int Interest;
         public readonly int StreakBonus;
@@ -83,6 +85,15 @@ namespace AutoBattler.Core
         public int Streak { get; private set; }
         public Shop Shop { get; } = new Shop();
 
+        private readonly List<ItemDefinition> _inventory = new List<ItemDefinition>();
+        private readonly List<AugmentDefinition> _augments = new List<AugmentDefinition>();
+        private List<RewardOption> _pendingRewards = new List<RewardOption>();
+
+        /// <summary>Items won but not equipped.</summary>
+        public IReadOnlyList<ItemDefinition> Inventory => _inventory;
+        public IReadOnlyList<AugmentDefinition> Augments => _augments;
+        public IReadOnlyList<RewardOption> PendingRewards => _pendingRewards;
+
         public GameSession(IRandom rng)
         {
             _rng = rng ?? throw new ArgumentNullException(nameof(rng));
@@ -105,8 +116,66 @@ namespace AutoBattler.Core
         public IReadOnlyList<ActiveSynergy> ActiveSynergies => Synergies.Evaluate(_board);
 
         /// <summary>Every bonus that applies to one of the player's units in battle.</summary>
-        public StatBonus BonusFor(OwnedUnit unit, IReadOnlyList<ActiveSynergy> synergies) =>
-            Synergies.BonusFor(unit.Definition, synergies);
+        public StatBonus BonusFor(OwnedUnit unit, IReadOnlyList<ActiveSynergy> synergies)
+        {
+            var bonus = Synergies.BonusFor(unit.Definition, synergies) + TeamBonus;
+            if (unit.Item != null) bonus += unit.Item.Bonus;
+            return bonus;
+        }
+
+        /// <summary>Sum of augment bonuses that apply to every unit.</summary>
+        public StatBonus TeamBonus
+        {
+            get
+            {
+                StatBonus total = default;
+                foreach (var a in _augments) total += a.TeamBonus;
+                return total;
+            }
+        }
+
+        public int AugmentGoldPerRound
+        {
+            get
+            {
+                int total = 0;
+                foreach (var a in _augments) total += a.GoldPerRound;
+                return total;
+            }
+        }
+
+        /// <summary>Applies one of the pending rewards: items go to the inventory, augments take effect immediately.</summary>
+        public bool ChooseReward(int index)
+        {
+            if (Phase != Phase.Reward || index < 0 || index >= _pendingRewards.Count) return false;
+            var choice = _pendingRewards[index];
+            if (choice.Kind == RewardKind.Item) _inventory.Add(choice.Item);
+            else _augments.Add(choice.Augment);
+            _pendingRewards = new List<RewardOption>();
+            Phase = Phase.Shop;
+            return true;
+        }
+
+        /// <summary>Grants a reward outside the reward phase (tests and tooling).</summary>
+        internal void GrantForTests(RewardOption reward)
+        {
+            if (reward.Kind == RewardKind.Item) _inventory.Add(reward.Item);
+            else _augments.Add(reward.Augment);
+        }
+
+        /// <summary>Equips an inventory item on a unit; an item the unit already held goes back to the inventory.</summary>
+        public bool TryEquip(int inventoryIndex, Slot slot)
+        {
+            if (Phase != Phase.Shop || inventoryIndex < 0 || inventoryIndex >= _inventory.Count) return false;
+            var unit = Get(slot);
+            if (unit == null) return false;
+
+            var item = _inventory[inventoryIndex];
+            _inventory.RemoveAt(inventoryIndex);
+            if (unit.Item != null) _inventory.Add(unit.Item);
+            unit.Item = item;
+            return true;
+        }
 
         public int BoardCount
         {
@@ -200,6 +269,7 @@ namespace AutoBattler.Core
             if (unit == null) return false;
             Set(slot, null);
             Gold += unit.SellValue;
+            if (unit.Item != null) _inventory.Add(unit.Item);
             return true;
         }
 
@@ -275,12 +345,22 @@ namespace AutoBattler.Core
                 return new RoundResult(won, damage, 0, 0, 0);
             }
 
-            int income = Income(Gold, Streak, out int interest, out int streakBonus);
+            int income = Income(Gold, Streak, out int interest, out int streakBonus) + AugmentGoldPerRound;
             Gold += income;
+            bool bossWin = won && EnemyWaves.IsBossRound(Round);
             Round++;
             AddXp(Balance.PassiveXpPerRound);
             Shop.Roll(_rng, Level);
-            Phase = Phase.Shop;
+
+            if (won)
+            {
+                _pendingRewards = new List<RewardOption>(Rewards.Generate(_rng, bossWin));
+                Phase = Phase.Reward;
+            }
+            else
+            {
+                Phase = Phase.Shop;
+            }
             return new RoundResult(won, damage, income, interest, streakBonus);
         }
 
@@ -311,16 +391,26 @@ namespace AutoBattler.Core
         {
             int needed = extra == null ? 3 : 2;
             Slot? keep = null;
+            var items = new List<ItemDefinition>();
             foreach (var slot in new List<Slot>(OccupiedSlots()))
             {
                 if (needed == 0) break;
                 var u = Get(slot);
                 if (u.Definition != def || u.Stars != stars) continue;
                 Set(slot, null);
+                if (u.Item != null) items.Add(u.Item);
                 if (keep == null) keep = slot;
                 needed--;
             }
-            Set(keep.Value, new OwnedUnit(def, stars + 1));
+
+            // The upgraded unit keeps the first item; any others return to the inventory.
+            var merged = new OwnedUnit(def, stars + 1);
+            if (items.Count > 0)
+            {
+                merged.Item = items[0];
+                for (int i = 1; i < items.Count; i++) _inventory.Add(items[i]);
+            }
+            Set(keep.Value, merged);
         }
     }
 }
