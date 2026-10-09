@@ -90,11 +90,11 @@ namespace AutoBattler.Tests
             s.TryMove(Slot.Bench(0), Slot.Board(new GridPos(0, 0)));
             PlayRounds(s, 3); // earn enough gold to fill the bench
 
-            // Ends with bench: Archer 2*, Archer, Lancer x2, Monk x2, Warrior x2 (the board Warrior became 2*).
+            // Ends with bench: Archer x2, Lancer x2, Monk x2, Warrior 2*, Warrior (the board Warrior became 2*).
             var buys = new[]
             {
-                UnitCatalog.Archer, UnitCatalog.Archer, UnitCatalog.Archer, UnitCatalog.Archer,
-                UnitCatalog.Lancer, UnitCatalog.Lancer, UnitCatalog.Monk, UnitCatalog.Monk,
+                UnitCatalog.Archer, UnitCatalog.Archer, UnitCatalog.Lancer, UnitCatalog.Lancer,
+                UnitCatalog.Monk, UnitCatalog.Monk, UnitCatalog.Warrior, UnitCatalog.Warrior,
                 UnitCatalog.Warrior, UnitCatalog.Warrior, UnitCatalog.Warrior, UnitCatalog.Warrior,
             };
             foreach (var def in buys)
@@ -104,13 +104,13 @@ namespace AutoBattler.Tests
             }
             for (int i = 0; i < GameSession.BenchSize; i++) Assert.That(s.Get(Slot.Bench(i)), Is.Not.Null);
 
-            s.Shop.Set(0, UnitCatalog.Archer);
-            Assert.That(s.CanBuy(0), Is.False, "bench is full and only one 1-star archer is owned");
+            s.Shop.Set(0, UnitCatalog.Warrior);
+            Assert.That(s.CanBuy(0), Is.False, "bench is full and only one 1-star warrior is owned");
 
-            s.Shop.Set(0, UnitCatalog.Lancer);
-            Assert.That(s.TryBuy(0), "third lancer should merge even though the bench is full");
-            Assert.That(CountOwned(s, UnitCatalog.Lancer, 2), Is.EqualTo(1));
-            Assert.That(CountOwned(s, UnitCatalog.Lancer, 1), Is.Zero);
+            s.Shop.Set(0, UnitCatalog.Archer);
+            Assert.That(s.TryBuy(0), "third archer should merge even though the bench is full");
+            Assert.That(CountOwned(s, UnitCatalog.Archer, 2), Is.EqualTo(1));
+            Assert.That(CountOwned(s, UnitCatalog.Archer, 1), Is.Zero);
         }
 
         private static int CountOwned(GameSession s, UnitDefinition def, int stars)
@@ -136,12 +136,12 @@ namespace AutoBattler.Tests
         public void Move_RespectsBoardCapacity()
         {
             var s = NewSession();
-            StockShop(s, UnitCatalog.Archer);
-            for (int i = 0; i < 4; i++) s.TryBuy(i); // merges first three
             StockShop(s, UnitCatalog.Warrior);
-            for (int i = 0; i < 2; i++) s.TryBuy(i);
-            StockShop(s, UnitCatalog.Lancer);
+            for (int i = 0; i < 4; i++) s.TryBuy(i); // merges first three
+            StockShop(s, UnitCatalog.Archer);
             s.TryBuy(0);
+            StockShop(s, UnitCatalog.Lancer);
+            s.TryBuy(0); // 9 gold spent: Warrior 2*, Warrior, Archer, Lancer
 
             int placed = 0;
             for (int i = 0; i < GameSession.BenchSize; i++)

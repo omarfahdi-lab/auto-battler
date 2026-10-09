@@ -20,7 +20,7 @@ they merge into a stronger, starred version. Survive all 10 rounds to win.
 | Unit | Cost | Role |
 | ---- | ---- | ---- |
 | **Warrior** | 1g | Sturdy melee fighter |
-| **Archer** | 1g | Fires arrows from 3 cells away |
+| **Archer** | 2g | Fires arrows from 3 cells away |
 | **Lancer** | 3g | Tank with a heavy lance thrust (in shops from round 3) |
 | **Monk** | 3g | Heals the ally with the lowest HP fraction, never attacks (in shops from round 3) |
 

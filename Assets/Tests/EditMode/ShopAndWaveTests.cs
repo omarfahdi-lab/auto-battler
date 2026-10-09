@@ -30,6 +30,20 @@ namespace AutoBattler.Tests
         }
 
         [Test]
+        public void Costs_HaveCheapMidAndHighTiers()
+        {
+            Assert.That(UnitCatalog.Warrior.Cost, Is.EqualTo(1));
+            Assert.That(UnitCatalog.Archer.Cost, Is.EqualTo(2));
+            Assert.That(UnitCatalog.Lancer.Cost, Is.EqualTo(3));
+            Assert.That(UnitCatalog.Monk.Cost, Is.EqualTo(3));
+
+            var rng = new SeededRandom(5);
+            var round1 = Enumerable.Range(0, 500).Select(_ => Shop.Pick(rng, 1)).ToList();
+            Assert.That(round1, Has.Some.EqualTo(UnitCatalog.Archer), "the 2g tier is available from round 1");
+            Assert.That(round1, Has.Some.EqualTo(UnitCatalog.Warrior));
+        }
+
+        [Test]
         public void Wave_GrowsWithRoundAndStaysOnEnemySide()
         {
             for (int round = 1; round <= GameSession.FinalRound; round++)

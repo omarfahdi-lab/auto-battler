@@ -61,7 +61,7 @@ namespace AutoBattler.Core
             power: 6, range: 1, UnitRole.Fighter, actionCooldown: 8, impactTicks: 2, usesProjectile: false,
             moveTicks: 3, color: 0x4A90E2);
 
-        public static readonly UnitDefinition Archer = new UnitDefinition("archer", "Archer", cost: 1, maxHp: 35,
+        public static readonly UnitDefinition Archer = new UnitDefinition("archer", "Archer", cost: 2, maxHp: 35,
             power: 6, range: 3, UnitRole.Fighter, actionCooldown: 12, impactTicks: 5, usesProjectile: true,
             moveTicks: 3, color: 0x7ED321);
 
