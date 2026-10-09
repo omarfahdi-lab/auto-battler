@@ -44,13 +44,18 @@ namespace AutoBattler.Core
     {
         public readonly bool Won;
         public readonly int DamageTaken;
+        /// <summary>Total income for the next round (base + interest + streak).</summary>
         public readonly int GoldEarned;
+        public readonly int Interest;
+        public readonly int StreakBonus;
 
-        public RoundResult(bool won, int damageTaken, int goldEarned)
+        public RoundResult(bool won, int damageTaken, int goldEarned, int interest, int streakBonus)
         {
             Won = won;
             DamageTaken = damageTaken;
             GoldEarned = goldEarned;
+            Interest = interest;
+            StreakBonus = streakBonus;
         }
     }
 
@@ -58,32 +63,35 @@ namespace AutoBattler.Core
     public sealed class GameSession
     {
         public const int BenchSize = 8;
-        public const int StartingGold = 10;
-        public const int StartingHealth = 20;
-        public const int FinalRound = 10;
-        public const int RerollCost = 1;
-        public const int BaseIncome = 5;
-        public const int MaxInterest = 3;
-        public const int WinBonus = 1;
-        public const int BaseLossDamage = 2;
+        public const int StartingGold = Balance.StartingGold;
+        public const int StartingHealth = Balance.StartingHealth;
+        public const int FinalRound = Balance.FinalRound;
+        public const int RerollCost = Balance.RerollCost;
+        public const int BaseLossDamage = Balance.BaseLossDamage;
 
         private readonly IRandom _rng;
         private readonly OwnedUnit[] _bench = new OwnedUnit[BenchSize];
         private readonly OwnedUnit[] _board = new OwnedUnit[BoardLayout.PlayerCells];
 
         public Phase Phase { get; private set; } = Phase.Shop;
-        public int Gold { get; private set; } = StartingGold;
+        public int Gold { get; internal set; } = StartingGold;
         public int Health { get; private set; } = StartingHealth;
         public int Round { get; private set; } = 1;
+        public int Level { get; private set; } = 1;
+        public int Xp { get; private set; }
+        /// <summary>Positive for consecutive wins, negative for consecutive losses.</summary>
+        public int Streak { get; private set; }
         public Shop Shop { get; } = new Shop();
 
         public GameSession(IRandom rng)
         {
             _rng = rng ?? throw new ArgumentNullException(nameof(rng));
-            Shop.Roll(_rng, Round);
+            Shop.Roll(_rng, Level);
         }
 
-        public int BoardCapacity => Math.Min(2 + Round, 8);
+        public int BoardCapacity => Balance.UnitCap(Level);
+        public int XpToNextLevel => Balance.XpToNext(Level);
+        public bool IsMaxLevel => Level >= Balance.MaxLevel;
 
         public OwnedUnit Get(Slot slot) => slot.Area == SlotArea.Bench ? _bench[slot.Index] : _board[slot.Index];
 
@@ -115,8 +123,37 @@ namespace AutoBattler.Core
         {
             if (Phase != Phase.Shop || Gold < RerollCost) return false;
             Gold -= RerollCost;
-            Shop.Roll(_rng, Round);
+            Shop.Roll(_rng, Level);
             return true;
+        }
+
+        public bool CanBuyXp => Phase == Phase.Shop && !IsMaxLevel && Gold >= Balance.XpCost;
+
+        public bool TryBuyXp()
+        {
+            if (!CanBuyXp) return false;
+            Gold -= Balance.XpCost;
+            AddXp(Balance.XpPerPurchase);
+            return true;
+        }
+
+        private void AddXp(int amount)
+        {
+            Xp += amount;
+            while (!IsMaxLevel && Xp >= XpToNextLevel)
+            {
+                Xp -= XpToNextLevel;
+                Level++;
+            }
+            if (IsMaxLevel) Xp = 0;
+        }
+
+        /// <summary>The income the player would receive for finishing a round with the given streak.</summary>
+        public static int Income(int gold, int streak, out int interest, out int streakBonus)
+        {
+            interest = Balance.Interest(gold);
+            streakBonus = Balance.StreakBonus(Math.Abs(streak));
+            return Balance.BaseIncome + interest + streakBonus;
         }
 
         public bool CanBuy(int shopSlot)
@@ -201,24 +238,28 @@ namespace AutoBattler.Core
             bool won = battle.Winner == Team.Player;
             int damage = won ? 0 : BaseLossDamage + battle.AliveCount(Team.Enemy);
             Health = Math.Max(0, Health - damage);
+            // Draws count as losses.
+            Streak = won ? Math.Max(Streak, 0) + 1 : Math.Min(Streak, 0) - 1;
 
             if (Health == 0)
             {
                 Phase = Phase.Defeat;
-                return new RoundResult(false, damage, 0);
+                return new RoundResult(false, damage, 0, 0, 0);
             }
-            if (won && Round == FinalRound)
+            if (Round == FinalRound)
             {
-                Phase = Phase.Victory;
-                return new RoundResult(true, 0, 0);
+                // The final round is a boss fight: beat it to win the run.
+                Phase = won ? Phase.Victory : Phase.Defeat;
+                return new RoundResult(won, damage, 0, 0, 0);
             }
 
-            int income = BaseIncome + Math.Min(Gold / 10, MaxInterest) + (won ? WinBonus : 0);
+            int income = Income(Gold, Streak, out int interest, out int streakBonus);
             Gold += income;
             Round++;
-            Shop.Roll(_rng, Round);
+            AddXp(Balance.PassiveXpPerRound);
+            Shop.Roll(_rng, Level);
             Phase = Phase.Shop;
-            return new RoundResult(won, damage, income);
+            return new RoundResult(won, damage, income, interest, streakBonus);
         }
 
         private int FreeBenchSlot() => Array.IndexOf(_bench, null);

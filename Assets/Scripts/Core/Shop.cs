@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace AutoBattler.Core
 {
-    /// <summary>A row of units for sale. Pricier units become more common in later rounds.</summary>
+    /// <summary>A row of units for sale. Odds per cost tier depend on the player's level.</summary>
     public sealed class Shop
     {
         public const int SlotCount = 5;
@@ -13,9 +13,9 @@ namespace AutoBattler.Core
         /// <summary>The unit in a slot, or null if it was bought.</summary>
         public UnitDefinition this[int slot] => _slots[slot];
 
-        public void Roll(IRandom rng, int round)
+        public void Roll(IRandom rng, int level)
         {
-            for (int i = 0; i < SlotCount; i++) _slots[i] = Pick(rng, round);
+            for (int i = 0; i < SlotCount; i++) _slots[i] = Pick(rng, level);
         }
 
         public UnitDefinition Take(int slot)
@@ -28,32 +28,34 @@ namespace AutoBattler.Core
         /// <summary>Replaces the slot contents; used by tests and tooling.</summary>
         public void Set(int slot, UnitDefinition unit) => _slots[slot] = unit;
 
-        public static int Weight(int cost, int round)
-        {
-            switch (cost)
-            {
-                case 1: return 6;
-                case 2: return 3 + round / 3;
-                case 3: return round >= 3 ? 1 + round / 3 : 0;
-                default: return 0;
-            }
-        }
+        public static UnitDefinition Pick(IRandom rng, int level) => Pick(rng, level, UnitCatalog.All);
 
-        public static UnitDefinition Pick(IRandom rng, int round) => Pick(rng, round, UnitCatalog.All);
-
-        public static UnitDefinition Pick(IRandom rng, int round, IReadOnlyList<UnitDefinition> pool)
+        /// <summary>Rolls a cost tier by the level's odds, then a unit uniformly within that tier.</summary>
+        public static UnitDefinition Pick(IRandom rng, int level, IReadOnlyList<UnitDefinition> pool)
         {
             int total = 0;
-            foreach (var def in pool) total += Weight(def.Cost, round);
-            if (total == 0) throw new InvalidOperationException("No units available for this round.");
+            for (int cost = 1; cost <= 3; cost++)
+                if (HasTier(pool, cost)) total += Balance.ShopOdds(level, cost);
+            if (total == 0) throw new InvalidOperationException("No units available at this level.");
 
             int roll = rng.Next(total);
-            foreach (var def in pool)
+            for (int cost = 1; cost <= 3; cost++)
             {
-                roll -= Weight(def.Cost, round);
-                if (roll < 0) return def;
+                if (!HasTier(pool, cost)) continue;
+                roll -= Balance.ShopOdds(level, cost);
+                if (roll >= 0) continue;
+
+                var tier = new List<UnitDefinition>();
+                foreach (var def in pool) if (def.Cost == cost) tier.Add(def);
+                return tier[rng.Next(tier.Count)];
             }
             throw new InvalidOperationException("Unreachable");
+        }
+
+        private static bool HasTier(IReadOnlyList<UnitDefinition> pool, int cost)
+        {
+            foreach (var def in pool) if (def.Cost == cost) return true;
+            return false;
         }
     }
 }

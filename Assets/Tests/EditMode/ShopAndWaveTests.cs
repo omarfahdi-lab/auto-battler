@@ -20,10 +20,9 @@ namespace AutoBattler.Tests
         }
 
         [Test]
-        public void ExpensiveUnits_LockedInFirstRounds()
+        public void ThreeCostUnits_NeverAppearAtLevelOne()
         {
-            Assert.That(Shop.Weight(3, 1), Is.Zero);
-            Assert.That(Shop.Weight(3, 3), Is.GreaterThan(0));
+            Assert.That(Balance.ShopOdds(1, 3), Is.Zero);
 
             var rng = new SeededRandom(3);
             for (int i = 0; i < 500; i++) Assert.That(Shop.Pick(rng, 1).Cost, Is.LessThan(3));
