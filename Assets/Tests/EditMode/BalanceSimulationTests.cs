@@ -21,6 +21,17 @@ namespace AutoBattler.Tests
             Assert.That(report.Victories, Is.EqualTo(report.Rounds[Balance.FinalRound].Wins));
         }
 
+        /// <summary>Guards the tuning: the README target is ~55% over 1,000 runs, so a smaller sample must stay close.</summary>
+        [Test]
+        public void TunedBalance_KeepsTheBotNearTheTargetWinRate()
+        {
+            var report = BalanceSimulation.Run(runs: 300, seed: 1);
+
+            Assert.That(report.RunWinRate, Is.InRange(0.45, 0.68));
+            for (int r = 2; r <= Balance.FinalRound; r++)
+                Assert.That(report.Rounds[r].AvgGoldAtStart, Is.LessThan(25), $"gold piling up in round {r}");
+        }
+
         [Test]
         public void Simulation_IsDeterministicForASeed()
         {

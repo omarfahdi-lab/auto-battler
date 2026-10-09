@@ -11,9 +11,10 @@ namespace AutoBattler.Core
     /// </summary>
     public sealed class GreedyBot
     {
-        /// <summary>Gold kept banked for interest from this round on.</summary>
+        /// <summary>Gold kept banked for interest from <see cref="ReserveFromRound"/> on. Spending everything is the
+        /// strongest simple policy over a 10-round run (see the README), so the default keeps nothing back.</summary>
+        public int Reserve { get; set; }
         public int ReserveFromRound { get; set; } = 3;
-        public int Reserve { get; set; } = 10;
         public int XpFromRound { get; set; } = 3;
         public int MaxRerollsPerRound { get; set; } = 2;
 

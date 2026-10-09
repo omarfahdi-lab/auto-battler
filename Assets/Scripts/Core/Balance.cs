@@ -62,7 +62,7 @@ namespace AutoBattler.Core
     
         // ---- Enemy waves -------------------------------------------------------------------------------------
         /// <summary>Enemy power per round (cost x copies, the same scale as gold spent), indexed by round.</summary>
-        private static readonly int[] EnemyBudgetByRound = { 0, 3, 5, 7, 9, 14, 15, 18, 22, 26, 36 };
+        private static readonly int[] EnemyBudgetByRound = { 0, 4, 7, 10, 14, 18, 23, 28, 33, 38, 45 };
         /// <summary>Number of non-boss enemies before leftover budget is spent, indexed by round.</summary>
         private static readonly int[] EnemyCountByRound = { 0, 2, 3, 3, 4, 3, 5, 5, 6, 6, 4 };
 
