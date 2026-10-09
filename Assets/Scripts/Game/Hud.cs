@@ -5,18 +5,21 @@ using UnityEngine.UIElements;
 
 namespace AutoBattler.Game
 {
-    /// <summary>UI Toolkit overlay built entirely in code: stats on the left, shop and actions on the right.</summary>
+    /// <summary>UI Toolkit overlay built in code from the Tiny Swords UI pieces: stats on the left, shop on the right.</summary>
     public sealed class Hud
     {
-        private static readonly Color PanelColor = new Color(0.12f, 0.13f, 0.18f, 0.92f);
-        private static readonly Color ButtonColor = new Color(0.22f, 0.25f, 0.33f);
-        private static readonly Color DisabledColor = new Color(0.16f, 0.17f, 0.21f);
-        private static readonly Color AccentColor = new Color(0.85f, 0.35f, 0.25f);
-        private static readonly Color TextColor = new Color(0.93f, 0.94f, 0.96f);
+        private const float SliceScale = 0.5f;
+
+        private static readonly Color LightText = new Color(1f, 0.97f, 0.88f);
+        private static readonly Color InkText = new Color(0.25f, 0.17f, 0.12f);
+        private static readonly Color MessageText = new Color(1f, 0.86f, 0.4f);
+        private static readonly Color Outline = new Color(0.12f, 0.08f, 0.06f);
 
         private readonly UIDocument _document;
-        private readonly Label _round, _health, _gold, _board, _message, _help;
+        private readonly Label _round, _health, _gold, _board, _message;
         private readonly Button[] _shopButtons = new Button[Shop.SlotCount];
+        private readonly VisualElement[] _portraits = new VisualElement[Shop.SlotCount];
+        private readonly Label[] _shopLabels = new Label[Shop.SlotCount];
         private readonly Button _reroll, _sell, _fight, _restart;
 
         public event Action<int> BuyClicked;
@@ -42,45 +45,39 @@ namespace AutoBattler.Game
             root.pickingMode = PickingMode.Ignore;
             root.style.flexDirection = FlexDirection.Row;
             root.style.justifyContent = Justify.SpaceBetween;
-            root.style.color = TextColor;
+            root.style.color = LightText;
             root.style.fontSize = 18;
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             if (font != null) root.style.unityFontDefinition = FontDefinition.FromFont(font);
 
             var left = Panel(root);
-            Title(left, "AUTO BATTLER");
-            _round = Text(left);
-            _health = Text(left);
-            _gold = Text(left);
-            _board = Text(left);
-            _message = Text(left);
-            _message.style.marginTop = 16;
-            _message.style.color = new Color(1f, 0.85f, 0.4f);
-            _message.style.whiteSpace = WhiteSpace.Normal;
-            _help = Text(left);
-            _help.style.marginTop = 16;
-            _help.style.fontSize = 13;
-            _help.style.whiteSpace = WhiteSpace.Normal;
-            _help.style.color = new Color(0.7f, 0.72f, 0.78f);
-            _help.text = "Click a unit, then a cell or bench slot to place it.\n" +
-                         "1-5 buy  ·  R reroll  ·  S sell  ·  Space fight  ·  Right-click cancel";
+            Ribbon(left, "AUTO BATTLER", row: 0);
+            _round = Stat(left, Art.Icon(5));
+            _health = Stat(left, Art.Icon(6));
+            _gold = Stat(left, Art.Icon(3));
+            _board = Stat(left, null);
+            _message = Text(left, 16, MessageText);
+            _message.style.marginTop = 12;
+            var help = Text(left, 13, new Color(0.93f, 0.86f, 0.74f));
+            help.style.marginTop = 12;
+            help.text = "Click a unit, then a cell or bench slot to place it.\n" +
+                        "1-5 buy  ·  R reroll  ·  S sell\nSpace fight  ·  Right-click cancel";
 
             var right = Panel(root);
-            Title(right, "SHOP");
-            for (int i = 0; i < Shop.SlotCount; i++)
-            {
-                int slot = i;
-                _shopButtons[i] = MakeButton(right, "", () => BuyClicked?.Invoke(slot));
-                _shopButtons[i].style.height = 56;
-            }
-            _reroll = MakeButton(right, $"Reroll ({GameSession.RerollCost}g)  [R]", () => RerollClicked?.Invoke());
-            _reroll.style.marginTop = 12;
-            _sell = MakeButton(right, "Sell selected  [S]", () => SellClicked?.Invoke());
-            _fight = MakeButton(right, "FIGHT!  [Space]", () => FightClicked?.Invoke());
-            _fight.style.marginTop = 12;
-            _fight.style.height = 48;
-            _restart = MakeButton(right, "New run", () => RestartClicked?.Invoke());
-            _restart.style.marginTop = 12;
+            Ribbon(right, "SHOP", row: 1);
+            for (int i = 0; i < Shop.SlotCount; i++) BuildShopCard(right, i);
+
+            var actions = new VisualElement();
+            actions.style.flexDirection = FlexDirection.Row;
+            actions.style.marginTop = 6;
+            right.Add(actions);
+            _reroll = BigButton(actions, $"Reroll {GameSession.RerollCost}g", red: false, () => RerollClicked?.Invoke());
+            _sell = BigButton(actions, "Sell", red: true, () => SellClicked?.Invoke());
+            _reroll.style.flexGrow = _sell.style.flexGrow = 1;
+            _fight = BigButton(right, "FIGHT!", red: false, () => FightClicked?.Invoke());
+            _fight.style.height = 54;
+            _fight.style.fontSize = 22;
+            _restart = BigButton(right, "New run", red: false, () => RestartClicked?.Invoke());
         }
 
         /// <summary>True if the screen-space point (origin bottom-left) is over an interactive UI element.</summary>
@@ -100,89 +97,175 @@ namespace AutoBattler.Game
         {
             bool shopping = session.Phase == Phase.Shop;
             _round.text = $"Round {session.Round} / {GameSession.FinalRound}";
-            _health.text = $"Health  {session.Health}";
-            _gold.text = $"Gold  {session.Gold}";
-            _board.text = $"Board  {session.BoardCount} / {session.BoardCapacity}";
+            _health.text = $"Health {session.Health}";
+            _gold.text = $"Gold {session.Gold}";
+            _board.text = $"Units on board {session.BoardCount} / {session.BoardCapacity}";
 
             for (int i = 0; i < Shop.SlotCount; i++)
             {
                 var def = session.Shop[i];
-                var button = _shopButtons[i];
-                button.text = def == null
-                    ? "—"
-                    : $"[{i + 1}] {def.Name}  ·  {def.Cost}g\nHP {def.MaxHp}  ATK {def.Attack}  RNG {def.Range}";
-                bool enabled = shopping && session.CanBuy(i);
-                SetEnabled(button, enabled);
-                button.style.borderLeftColor = def != null ? SpriteFactory.FromRgb(def.Color) : DisabledColor;
+                _portraits[i].style.backgroundImage = def != null
+                    ? new StyleBackground(Art.Unit(def, Team.Player).Portrait)
+                    : new StyleBackground(StyleKeyword.None);
+                _shopLabels[i].text = def == null ? "Sold" : Describe(i, def);
+                SetEnabled(_shopButtons[i], shopping && session.CanBuy(i));
             }
 
             SetEnabled(_reroll, shopping && session.Gold >= GameSession.RerollCost);
             SetEnabled(_sell, shopping && selected != null);
-            _sell.text = selected != null ? $"Sell {selected} (+{selected.SellValue}g)  [S]" : "Sell selected  [S]";
+            _sell.text = selected != null ? $"Sell +{selected.SellValue}g" : "Sell";
             SetEnabled(_fight, shopping && session.BoardCount > 0);
 
             bool over = session.Phase == Phase.Victory || session.Phase == Phase.Defeat;
             _restart.style.display = over ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
+        private static string Describe(int slot, UnitDefinition def)
+        {
+            string power = def.Role == UnitRole.Healer ? $"Heal {def.Power}" : $"Atk {def.Power}";
+            return $"[{slot + 1}] {def.Name} · {def.Cost}g\nHP {def.MaxHp}  {power}  Rng {def.Range}";
+        }
+
+        private void BuildShopCard(VisualElement parent, int slot)
+        {
+            var card = new Button(() => BuyClicked?.Invoke(slot));
+            ApplySlices(card, Art.Paper());
+            card.style.flexDirection = FlexDirection.Row;
+            card.style.alignItems = Align.Center;
+            card.style.height = 58;
+            card.style.marginTop = 3;
+            card.style.paddingLeft = 6;
+            ClearButtonChrome(card);
+
+            var portrait = new VisualElement { pickingMode = PickingMode.Ignore };
+            portrait.style.width = portrait.style.height = 48;
+            portrait.style.flexShrink = 0;
+            card.Add(portrait);
+
+            var label = Text(card, 14, InkText);
+            label.pickingMode = PickingMode.Ignore;
+            label.style.marginLeft = 6;
+            label.style.marginBottom = 0;
+
+            parent.Add(card);
+            _shopButtons[slot] = card;
+            _portraits[slot] = portrait;
+            _shopLabels[slot] = label;
+        }
+
         private static void SetEnabled(Button button, bool enabled)
         {
             button.SetEnabled(enabled);
-            button.style.backgroundColor = enabled ? ButtonColor : DisabledColor;
-            button.style.opacity = enabled ? 1f : 0.55f;
+            button.style.opacity = enabled ? 1f : 0.5f;
         }
 
         private static VisualElement Panel(VisualElement root)
         {
             var panel = new VisualElement();
-            panel.style.width = 270;
-            panel.style.marginLeft = panel.style.marginRight = 12;
-            panel.style.marginTop = panel.style.marginBottom = 12;
-            panel.style.paddingLeft = panel.style.paddingRight = 14;
-            panel.style.paddingTop = panel.style.paddingBottom = 14;
-            panel.style.backgroundColor = PanelColor;
-            panel.style.borderTopLeftRadius = panel.style.borderTopRightRadius = 8;
-            panel.style.borderBottomLeftRadius = panel.style.borderBottomRightRadius = 8;
+            ApplySlices(panel, Art.WoodPanel());
+            panel.style.width = 280;
+            panel.style.marginLeft = panel.style.marginRight = 8;
+            panel.style.marginTop = panel.style.marginBottom = 8;
+            panel.style.paddingLeft = panel.style.paddingRight = 26;
+            panel.style.paddingTop = 18;
+            panel.style.paddingBottom = 42;
             panel.style.alignSelf = Align.FlexStart;
             root.Add(panel);
             return panel;
         }
 
-        private static void Title(VisualElement parent, string text)
+        private static void Ribbon(VisualElement parent, string text, int row)
         {
-            var label = Text(parent);
-            label.text = text;
-            label.style.fontSize = 22;
-            label.style.unityFontStyleAndWeight = FontStyle.Bold;
-            label.style.color = AccentColor;
+            var label = new Label(text);
+            ApplySlices(label, Art.Ribbon(row));
+            label.style.height = 44;
+            label.style.marginLeft = label.style.marginRight = -12;
             label.style.marginBottom = 8;
+            label.style.unityTextAlign = TextAnchor.MiddleCenter;
+            label.style.fontSize = 20;
+            label.style.unityFontStyleAndWeight = FontStyle.Bold;
+            label.style.color = LightText;
+            Outlined(label);
+            parent.Add(label);
         }
 
-        private static Label Text(VisualElement parent)
+        private static Label Stat(VisualElement parent, Texture2D icon)
+        {
+            var row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row;
+            row.style.alignItems = Align.Center;
+            row.style.height = 30;
+            parent.Add(row);
+            if (icon != null)
+            {
+                var image = new VisualElement();
+                image.style.backgroundImage = new StyleBackground(icon);
+                image.style.width = image.style.height = 30;
+                image.style.marginRight = 6;
+                row.Add(image);
+            }
+            var label = Text(row, 18, LightText);
+            label.style.marginBottom = 0;
+            Outlined(label);
+            return label;
+        }
+
+        private static Label Text(VisualElement parent, int size, Color color)
         {
             var label = new Label();
+            label.style.fontSize = size;
+            label.style.color = color;
+            label.style.whiteSpace = WhiteSpace.Normal;
             label.style.marginBottom = 4;
             parent.Add(label);
             return label;
         }
 
-        private static Button MakeButton(VisualElement parent, string text, Action onClick)
+        private static Button BigButton(VisualElement parent, string text, bool red, Action onClick)
         {
             var button = new Button(onClick) { text = text };
-            button.style.color = TextColor;
-            button.style.fontSize = 15;
-            button.style.minHeight = 36;
+            var regular = Art.BigButton(red, pressed: false);
+            var pressed = Art.BigButton(red, pressed: true);
+            ApplySlices(button, regular);
+            ClearButtonChrome(button);
+            button.style.height = 44;
             button.style.marginTop = 4;
-            button.style.paddingLeft = 10;
-            button.style.unityTextAlign = TextAnchor.MiddleLeft;
-            button.style.whiteSpace = WhiteSpace.Normal;
-            button.style.borderTopLeftRadius = button.style.borderTopRightRadius = 6;
-            button.style.borderBottomLeftRadius = button.style.borderBottomRightRadius = 6;
-            button.style.borderLeftWidth = 5;
-            button.style.borderLeftColor = ButtonColor;
-            button.style.borderRightWidth = button.style.borderTopWidth = button.style.borderBottomWidth = 0;
+            button.style.marginLeft = button.style.marginRight = 2;
+            button.style.fontSize = 17;
+            button.style.unityFontStyleAndWeight = FontStyle.Bold;
+            button.style.color = LightText;
+            button.style.unityTextAlign = TextAnchor.MiddleCenter;
+            Outlined(button);
+
+            // Swap to the pressed artwork while held.
+            button.RegisterCallback<PointerDownEvent>(_ => ApplySlices(button, pressed), TrickleDown.TrickleDown);
+            button.RegisterCallback<PointerUpEvent>(_ => ApplySlices(button, regular));
+            button.RegisterCallback<PointerLeaveEvent>(_ => ApplySlices(button, regular));
             parent.Add(button);
             return button;
+        }
+
+        private static void ApplySlices(VisualElement element, SlicedTexture art)
+        {
+            element.style.backgroundImage = new StyleBackground(art.Texture);
+            element.style.unitySliceLeft = art.Left;
+            element.style.unitySliceRight = art.Right;
+            element.style.unitySliceTop = art.Top;
+            element.style.unitySliceBottom = art.Bottom;
+            element.style.unitySliceScale = SliceScale;
+        }
+
+        private static void ClearButtonChrome(VisualElement button)
+        {
+            button.style.backgroundColor = Color.clear;
+            button.style.borderLeftWidth = button.style.borderRightWidth = 0;
+            button.style.borderTopWidth = button.style.borderBottomWidth = 0;
+        }
+
+        private static void Outlined(VisualElement element)
+        {
+            element.style.unityTextOutlineColor = Outline;
+            element.style.unityTextOutlineWidth = 0.15f;
         }
     }
 }

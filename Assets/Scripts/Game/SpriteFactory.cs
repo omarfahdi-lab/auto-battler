@@ -2,21 +2,21 @@ using UnityEngine;
 
 namespace AutoBattler.Game
 {
-    /// <summary>Generates white placeholder sprites at runtime; tint them with SpriteRenderer.color.</summary>
+    /// <summary>Generates small white helper sprites (overlays, star pips); tint them with SpriteRenderer.color.</summary>
     public static class SpriteFactory
     {
         private const int Size = 64;
         private static Sprite _square;
-        private static Sprite _circle;
+        private static Sprite _diamond;
 
-        public static Sprite Square => _square != null ? _square : _square = Create(circle: false);
-        public static Sprite Circle => _circle != null ? _circle : _circle = Create(circle: true);
+        public static Sprite Square => _square != null ? _square : _square = Create(diamond: false);
+        public static Sprite Diamond => _diamond != null ? _diamond : _diamond = Create(diamond: true);
 
-        private static Sprite Create(bool circle)
+        private static Sprite Create(bool diamond)
         {
             var tex = new Texture2D(Size, Size, TextureFormat.RGBA32, false)
             {
-                filterMode = FilterMode.Bilinear,
+                filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp,
             };
             var pixels = new Color32[Size * Size];
@@ -25,12 +25,7 @@ namespace AutoBattler.Game
             for (int x = 0; x < Size; x++)
             {
                 byte a = 255;
-                if (circle)
-                {
-                    float dx = x + 0.5f - r, dy = y + 0.5f - r;
-                    // One pixel of soft edge for cheap anti-aliasing.
-                    a = (byte)(Mathf.Clamp01(r - Mathf.Sqrt(dx * dx + dy * dy)) * 255);
-                }
+                if (diamond && Mathf.Abs(x + 0.5f - r) + Mathf.Abs(y + 0.5f - r) > r) a = 0;
                 pixels[y * Size + x] = new Color32(255, 255, 255, a);
             }
             tex.SetPixels32(pixels);

@@ -8,16 +8,15 @@ namespace AutoBattler.Game
     /// <summary>Drives a GameSession: draws the board, handles input, and plays battles back tick by tick.</summary>
     public sealed class GameController : MonoBehaviour
     {
-        private const float TickSeconds = 0.18f;
+        private const float TickSeconds = 1f / BattleSimulator.TicksPerSecond;
         private const float EndOfBattlePause = 1.2f;
         private const float BenchY = -1.6f;
 
-        private static readonly Color PlayerTile = new Color(0.20f, 0.26f, 0.36f);
-        private static readonly Color PlayerTileAlt = new Color(0.17f, 0.22f, 0.31f);
-        private static readonly Color EnemyTile = new Color(0.30f, 0.19f, 0.21f);
-        private static readonly Color EnemyTileAlt = new Color(0.26f, 0.16f, 0.18f);
-        private static readonly Color BenchTile = new Color(0.22f, 0.22f, 0.24f);
-        private static readonly Color HighlightTile = new Color(0.95f, 0.8f, 0.3f, 0.35f);
+        private static readonly Color PlayerTint = new Color(0.25f, 0.45f, 1f, 0.12f);
+        private static readonly Color EnemyTint = new Color(1f, 0.25f, 0.2f, 0.12f);
+        private static readonly Color GridLine = new Color(0.1f, 0.2f, 0.05f, 0.18f);
+        private static readonly Color SlotMark = new Color(0.1f, 0.2f, 0.05f, 0.15f);
+        private static readonly Color HighlightTile = new Color(1f, 0.9f, 0.35f, 0.4f);
 
         private Camera _camera;
         private Hud _hud;
@@ -41,6 +40,7 @@ namespace AutoBattler.Game
             // Frame the 8x6 board plus bench; side panels fit in the remaining width.
             _camera.orthographicSize = 5.2f;
             _camera.transform.position = new Vector3(0f, 1.0f, -10f);
+            _camera.backgroundColor = Art.WaterColor();
 
             BuildTiles();
             _unitRoot = new GameObject("Units").transform;
@@ -90,22 +90,54 @@ namespace AutoBattler.Game
 
         private void BuildTiles()
         {
-            var tiles = new GameObject("Tiles").transform;
+            var tiles = new GameObject("Terrain").transform;
             tiles.SetParent(transform, false);
+
+            // The board is one grass island built from the tileset's 3x3 flat-ground pieces.
             for (int y = 0; y < BoardLayout.Height; y++)
             for (int x = 0; x < BoardLayout.Width; x++)
             {
-                var p = new GridPos(x, y);
-                bool alt = (x + y) % 2 == 0;
-                var color = BoardLayout.IsPlayerCell(p) ? (alt ? PlayerTile : PlayerTileAlt) : (alt ? EnemyTile : EnemyTileAlt);
-                SpriteFactory.CreateChild(tiles, $"Cell {p}", SpriteFactory.Square, color, 0, CellToWorld(p), Vector2.one * 0.96f);
+                int col = x == 0 ? 0 : x == BoardLayout.Width - 1 ? 2 : 1;
+                int row = y == BoardLayout.Height - 1 ? 0 : y == 0 ? 2 : 1;
+                Tile(tiles, $"Cell {x},{y}", Art.GrassTile(col, row), CellToWorld(new GridPos(x, y)));
             }
-            for (int i = 0; i < GameSession.BenchSize; i++)
-                SpriteFactory.CreateChild(tiles, $"Bench {i}", SpriteFactory.Square, BenchTile, 0, BenchToWorld(i), Vector2.one * 0.9f);
 
-            _highlight = SpriteFactory.CreateChild(transform, "Highlight", SpriteFactory.Square, HighlightTile, 1,
-                Vector3.zero, Vector2.one * 0.96f);
+            // Tint each half by team and draw faint cell lines so the grid reads on top of the grass.
+            float halfHeight = BoardLayout.Height / 2f;
+            var boardCenter = (CellToWorld(new GridPos(0, 0)) + CellToWorld(new GridPos(BoardLayout.Width - 1, BoardLayout.Height - 1))) / 2f;
+            SpriteFactory.CreateChild(tiles, "PlayerTint", SpriteFactory.Square, PlayerTint, 1,
+                boardCenter + Vector3.down * halfHeight / 2f, new Vector2(BoardLayout.Width - 0.3f, halfHeight - 0.15f));
+            SpriteFactory.CreateChild(tiles, "EnemyTint", SpriteFactory.Square, EnemyTint, 1,
+                boardCenter + Vector3.up * halfHeight / 2f, new Vector2(BoardLayout.Width - 0.3f, halfHeight - 0.15f));
+            for (int x = 1; x < BoardLayout.Width; x++)
+                SpriteFactory.CreateChild(tiles, "GridLine", SpriteFactory.Square, GridLine, 1,
+                    new Vector3(boardCenter.x + x - BoardLayout.Width / 2f, boardCenter.y, 0f),
+                    new Vector2(0.03f, BoardLayout.Height - 0.4f));
+            for (int y = 1; y < BoardLayout.Height; y++)
+                SpriteFactory.CreateChild(tiles, "GridLine", SpriteFactory.Square, GridLine, 1,
+                    new Vector3(boardCenter.x, boardCenter.y + y - BoardLayout.Height / 2f, 0f),
+                    new Vector2(BoardLayout.Width - 0.4f, y == BoardLayout.PlayerRows ? 0.06f : 0.03f));
+
+            // The bench is a one-tile-high grass strip below the board.
+            for (int i = 0; i < GameSession.BenchSize; i++)
+            {
+                int piece = i == 0 ? 0 : i == GameSession.BenchSize - 1 ? 2 : 1;
+                Tile(tiles, $"Bench {i}", Art.BenchTile(piece), BenchToWorld(i));
+                SpriteFactory.CreateChild(tiles, "BenchSlot", SpriteFactory.Square, SlotMark, 1, BenchToWorld(i),
+                    Vector2.one * 0.78f);
+            }
+
+            _highlight = SpriteFactory.CreateChild(transform, "Highlight", SpriteFactory.Square, HighlightTile, 2,
+                Vector3.zero, Vector2.one * 0.92f);
             _highlight.enabled = false;
+        }
+
+        private static void Tile(Transform parent, string name, Sprite sprite, Vector3 position)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.position = position;
+            SpriteFactory.AddRenderer(go, sprite, Color.white, 0);
         }
 
         // ---- Shop phase ---------------------------------------------------------------------------------------
@@ -219,23 +251,43 @@ namespace AutoBattler.Game
 
         private void Apply(BattleEvent e)
         {
+            _battleViews.TryGetValue(e.SourceId, out var source);
+            UnitView target = null;
+            if (e.TargetId >= 0) _battleViews.TryGetValue(e.TargetId, out target);
+
             switch (e.Type)
             {
                 case BattleEventType.Move:
-                    if (_battleViews.TryGetValue(e.SourceId, out var mover)) mover.MoveTo(CellToWorld(e.To));
+                    if (source != null) source.MoveTo(CellToWorld(e.To), e.Ticks * TickSeconds);
                     break;
-                case BattleEventType.Attack:
-                    if (_battleViews.TryGetValue(e.TargetId, out var target))
+                case BattleEventType.ActionStart:
+                    if (source != null) source.PlayAction(CellToWorld(e.To));
+                    break;
+                case BattleEventType.ProjectileLaunch:
+                    if (source != null && target != null)
+                        ArrowView.Launch(_unitRoot, Art.Arrow(_battle.Find(e.SourceId).Team),
+                            source.transform.position + ArrowView.ArrowHeight, target.transform, e.Ticks * TickSeconds);
+                    break;
+                case BattleEventType.Damage:
+                    if (target != null)
                     {
                         var c = _battle.Find(e.TargetId);
                         target.SetHealth(c.Hp, c.MaxHp);
-                        target.Flash();
+                        target.Hit();
+                    }
+                    break;
+                case BattleEventType.Heal:
+                    if (target != null)
+                    {
+                        var c = _battle.Find(e.TargetId);
+                        target.SetHealth(c.Hp, c.MaxHp);
+                        OneShotEffect.Play(_unitRoot, Art.HealEffect(c.Team), target.transform.position + Vector3.up * 0.2f, 6000);
                     }
                     break;
                 case BattleEventType.Death:
-                    if (_battleViews.TryGetValue(e.SourceId, out var dead))
+                    if (source != null)
                     {
-                        Destroy(dead.gameObject);
+                        source.Die();
                         _battleViews.Remove(e.SourceId);
                     }
                     break;
