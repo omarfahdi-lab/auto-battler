@@ -171,6 +171,7 @@ namespace AutoBattler.Game
             var button = new Button(onClick) { text = text };
             button.style.color = TextColor;
             button.style.fontSize = 15;
+            button.style.minHeight = 36;
             button.style.marginTop = 4;
             button.style.paddingLeft = 10;
             button.style.unityTextAlign = TextAnchor.MiddleLeft;
