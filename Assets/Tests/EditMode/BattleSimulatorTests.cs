@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using AutoBattler.Core;
 using NUnit.Framework;
@@ -9,52 +10,159 @@ namespace AutoBattler.Tests
         private static Combatant Make(int id, Team team, UnitDefinition def, int x, int y, int stars = 1) =>
             new Combatant(id, team, new OwnedUnit(def, stars), new GridPos(x, y));
 
-        [Test]
-        public void MeleeUnit_MovesTowardNearestEnemy()
+        /// <summary>Steps the simulation n times and returns every event with the tick it happened on.</summary>
+        private static List<(int tick, BattleEvent e)> Run(BattleSimulator sim, int ticks)
         {
-            var sim = new BattleSimulator(new[]
+            var log = new List<(int, BattleEvent)>();
+            for (int i = 0; i < ticks && !sim.IsOver; i++)
             {
-                Make(0, Team.Player, UnitCatalog.Knight, 0, 0),
-                Make(1, Team.Enemy, UnitCatalog.Knight, 0, 5),
-            });
-
-            var events = sim.Step();
-
-            Assert.That(events.Any(e => e.Type == BattleEventType.Move && e.SourceId == 0));
-            Assert.That(sim.Find(0).Position, Is.EqualTo(new GridPos(0, 1)));
+                int tick = sim.Tick;
+                foreach (var e in sim.Step()) log.Add((tick, e));
+            }
+            return log;
         }
 
         [Test]
-        public void RangedUnit_AttacksWithoutMovingWhenInRange()
+        public void Roster_HasNoRogue()
+        {
+            Assert.That(UnitCatalog.All.Select(u => u.Id), Is.EquivalentTo(new[] { "warrior", "archer", "lancer", "monk" }));
+        }
+
+        [Test]
+        public void MeleeUnit_MovesTowardNearestEnemyAtItsMoveSpeed()
+        {
+            var sim = new BattleSimulator(new[]
+            {
+                Make(0, Team.Player, UnitCatalog.Warrior, 0, 0),
+                Make(1, Team.Enemy, UnitCatalog.Warrior, 7, 5),
+            });
+
+            var moves = Run(sim, 10).Where(x => x.e.Type == BattleEventType.Move && x.e.SourceId == 0).ToList();
+
+            Assert.That(moves[0].tick, Is.EqualTo(0));
+            Assert.That(moves[0].e.To, Is.EqualTo(new GridPos(1, 1)));
+            Assert.That(moves[1].tick - moves[0].tick, Is.EqualTo(UnitCatalog.Warrior.MoveTicks));
+        }
+
+        [Test]
+        public void MeleeDamage_LandsOnImpactTick()
+        {
+            var sim = new BattleSimulator(new[]
+            {
+                Make(0, Team.Player, UnitCatalog.Warrior, 3, 2),
+                Make(1, Team.Enemy, UnitCatalog.Lancer, 3, 3, stars: 3),
+            });
+
+            var log = Run(sim, 12);
+            var start = log.First(x => x.e.Type == BattleEventType.ActionStart && x.e.SourceId == 0);
+            var hit = log.First(x => x.e.Type == BattleEventType.Damage && x.e.SourceId == 0);
+
+            Assert.That(start.tick, Is.EqualTo(0));
+            Assert.That(hit.tick - start.tick, Is.EqualTo(UnitCatalog.Warrior.ImpactTicks));
+            Assert.That(hit.e.Amount, Is.EqualTo(UnitCatalog.Warrior.Power));
+        }
+
+        [Test]
+        public void Actions_RespectCooldown()
+        {
+            var sim = new BattleSimulator(new[]
+            {
+                Make(0, Team.Player, UnitCatalog.Warrior, 3, 2, stars: 3),
+                Make(1, Team.Enemy, UnitCatalog.Lancer, 3, 3, stars: 3),
+            });
+
+            var starts = Run(sim, 40).Where(x => x.e.Type == BattleEventType.ActionStart && x.e.SourceId == 0)
+                .Select(x => x.tick).ToList();
+
+            Assert.That(starts.Count, Is.GreaterThan(2));
+            for (int i = 1; i < starts.Count; i++)
+                Assert.That(starts[i] - starts[i - 1], Is.EqualTo(UnitCatalog.Warrior.ActionCooldown));
+        }
+
+        [Test]
+        public void Archer_FiresProjectileThatLandsAfterTravelTime()
         {
             var sim = new BattleSimulator(new[]
             {
                 Make(0, Team.Player, UnitCatalog.Archer, 0, 0),
-                Make(1, Team.Enemy, UnitCatalog.Golem, 0, 3),
+                // A healer with nobody to heal holds position at its range, so the distance stays 3.
+                Make(1, Team.Enemy, UnitCatalog.Monk, 0, 3, stars: 3),
             });
 
-            var events = sim.Step();
+            var log = Run(sim, 20);
+            var start = log.First(x => x.e.Type == BattleEventType.ActionStart && x.e.SourceId == 0);
+            var launch = log.First(x => x.e.Type == BattleEventType.ProjectileLaunch && x.e.SourceId == 0);
+            var hit = log.First(x => x.e.Type == BattleEventType.Damage && x.e.SourceId == 0);
 
-            Assert.That(sim.Find(0).Position, Is.EqualTo(new GridPos(0, 0)));
-            Assert.That(events.Any(e => e.Type == BattleEventType.Attack && e.SourceId == 0 && e.TargetId == 1));
-            Assert.That(sim.Find(1).Hp, Is.EqualTo(UnitCatalog.Golem.MaxHp - UnitCatalog.Archer.Attack));
+            Assert.That(sim.Find(0).Position, Is.EqualTo(new GridPos(0, 0)), "archer shoots from where it stands");
+            Assert.That(launch.tick - start.tick, Is.EqualTo(UnitCatalog.Archer.ImpactTicks));
+            Assert.That(launch.e.Ticks, Is.EqualTo(3 * BattleSimulator.ProjectileTicksPerCell));
+            Assert.That(hit.tick - launch.tick, Is.EqualTo(launch.e.Ticks));
         }
 
         [Test]
-        public void Attacks_RespectCooldown()
+        public void Projectile_FizzlesIfTargetDiesInFlight()
         {
+            var victim = Make(1, Team.Enemy, UnitCatalog.Monk, 0, 3);
             var sim = new BattleSimulator(new[]
             {
                 Make(0, Team.Player, UnitCatalog.Archer, 0, 0),
-                Make(1, Team.Enemy, UnitCatalog.Golem, 7, 3, stars: 3),
+                victim,
+                Make(2, Team.Enemy, UnitCatalog.Monk, 7, 5),
             });
-            // Archer is out of range, golem must walk; count archer attacks over a fixed window once in range.
-            int attacks = 0;
-            for (int i = 0; i < 30; i++)
-                attacks += sim.Step().Count(e => e.Type == BattleEventType.Attack && e.SourceId == 0);
 
-            Assert.That(attacks, Is.LessThanOrEqualTo(30 / UnitCatalog.Archer.AttackCooldown + 1));
-            Assert.That(attacks, Is.GreaterThan(0));
+            while (sim.ProjectilesInFlight == 0) sim.Step();
+            victim.Hp = 0; // killed by something else while the arrow is in the air
+            var log = Run(sim, 10);
+
+            Assert.That(log.Any(x => x.e.Type == BattleEventType.Damage && x.e.TargetId == 1), Is.False);
+        }
+
+        [Test]
+        public void Monk_HealsLowestHpFractionAlly()
+        {
+            var monk = Make(0, Team.Player, UnitCatalog.Monk, 3, 0);
+            var scratched = Make(1, Team.Player, UnitCatalog.Lancer, 2, 1);
+            var wounded = Make(2, Team.Player, UnitCatalog.Archer, 4, 1);
+            var enemy = Make(3, Team.Enemy, UnitCatalog.Warrior, 7, 5);
+            scratched.Hp = scratched.MaxHp - 30; // 110/140, lower absolute loss in fraction terms
+            wounded.Hp = 20;                     // 20/35, the most injured
+            var sim = new BattleSimulator(new[] { monk, scratched, wounded, enemy });
+
+            var log = Run(sim, UnitCatalog.Monk.ImpactTicks + 1);
+            var heal = log.Single(x => x.e.Type == BattleEventType.Heal);
+
+            Assert.That(heal.e.TargetId, Is.EqualTo(2));
+            Assert.That(heal.tick, Is.EqualTo(UnitCatalog.Monk.ImpactTicks));
+            Assert.That(wounded.Hp, Is.EqualTo(20 + UnitCatalog.Monk.Power));
+        }
+
+        [Test]
+        public void Monk_HealNeverExceedsMaxHp()
+        {
+            var monk = Make(0, Team.Player, UnitCatalog.Monk, 3, 0);
+            var ally = Make(1, Team.Player, UnitCatalog.Warrior, 3, 1);
+            ally.Hp = ally.MaxHp - 1;
+            // A lone enemy monk never attacks, so the only HP change is the heal.
+            var sim = new BattleSimulator(new[] { monk, ally, Make(2, Team.Enemy, UnitCatalog.Monk, 7, 5) });
+
+            Run(sim, UnitCatalog.Monk.ImpactTicks + 1);
+
+            Assert.That(ally.Hp, Is.EqualTo(ally.MaxHp));
+        }
+
+        [Test]
+        public void Monk_NeverDamagesEnemies()
+        {
+            var sim = new BattleSimulator(new[]
+            {
+                Make(0, Team.Player, UnitCatalog.Monk, 3, 2),
+                Make(1, Team.Enemy, UnitCatalog.Archer, 3, 4),
+            });
+
+            var log = Run(sim, 200);
+
+            Assert.That(log.Any(x => x.e.Type == BattleEventType.Damage && x.e.SourceId == 0), Is.False);
         }
 
         [Test]
@@ -62,13 +170,13 @@ namespace AutoBattler.Tests
         {
             var sim = new BattleSimulator(new[]
             {
-                Make(0, Team.Player, UnitCatalog.Mage, 0, 0, stars: 3),
+                Make(0, Team.Player, UnitCatalog.Lancer, 0, 0, stars: 3),
                 Make(1, Team.Enemy, UnitCatalog.Archer, 1, 1),
             });
 
-            var events = sim.Step();
+            var log = Run(sim, 5);
 
-            Assert.That(events.Any(e => e.Type == BattleEventType.Death && e.SourceId == 1));
+            Assert.That(log.Any(x => x.e.Type == BattleEventType.Death && x.e.SourceId == 1));
             Assert.That(sim.IsOver);
             Assert.That(sim.Winner, Is.EqualTo(Team.Player));
         }
@@ -78,9 +186,9 @@ namespace AutoBattler.Tests
         {
             var sim = new BattleSimulator(new[]
             {
-                Make(0, Team.Player, UnitCatalog.Golem, 3, 2, stars: 2),
+                Make(0, Team.Player, UnitCatalog.Lancer, 3, 2, stars: 2),
                 Make(1, Team.Player, UnitCatalog.Archer, 3, 0, stars: 2),
-                Make(2, Team.Enemy, UnitCatalog.Knight, 3, 4),
+                Make(2, Team.Enemy, UnitCatalog.Warrior, 3, 4),
             });
 
             Assert.That(sim.RunToEnd(), Is.EqualTo(Team.Player));
@@ -91,8 +199,8 @@ namespace AutoBattler.Tests
         public void UnitsNeverShareACell()
         {
             var combatants = Enumerable.Range(0, 8)
-                .Select(i => Make(i, Team.Player, UnitCatalog.Knight, i, 0))
-                .Concat(Enumerable.Range(0, 8).Select(i => Make(8 + i, Team.Enemy, UnitCatalog.Rogue, i, 5)))
+                .Select(i => Make(i, Team.Player, i % 2 == 0 ? UnitCatalog.Warrior : UnitCatalog.Monk, i, 0))
+                .Concat(Enumerable.Range(0, 8).Select(i => Make(8 + i, Team.Enemy, UnitCatalog.Archer, i, 5)))
                 .ToList();
             var sim = new BattleSimulator(combatants);
 
@@ -107,17 +215,15 @@ namespace AutoBattler.Tests
         [Test]
         public void Battle_TimesOutAsDraw()
         {
-            Assert.That(BattleSimulator.MaxTicks, Is.GreaterThan(0));
+            // Two healers can never hurt each other.
             var sim = new BattleSimulator(new[]
             {
-                Make(0, Team.Player, UnitCatalog.Golem, 0, 0, stars: 3),
-                Make(1, Team.Enemy, UnitCatalog.Golem, 7, 5, stars: 3),
+                Make(0, Team.Player, UnitCatalog.Monk, 0, 0),
+                Make(1, Team.Enemy, UnitCatalog.Monk, 7, 5),
             });
 
-            sim.RunToEnd();
-
-            Assert.That(sim.IsOver);
-            Assert.That(sim.Tick, Is.LessThanOrEqualTo(BattleSimulator.MaxTicks));
+            Assert.That(sim.RunToEnd(), Is.Null);
+            Assert.That(sim.Tick, Is.EqualTo(BattleSimulator.MaxTicks));
         }
 
         [Test]
@@ -125,8 +231,8 @@ namespace AutoBattler.Tests
         {
             Assert.Throws<System.ArgumentException>(() => new BattleSimulator(new[]
             {
-                Make(0, Team.Player, UnitCatalog.Knight, 1, 1),
-                Make(1, Team.Enemy, UnitCatalog.Knight, 1, 1),
+                Make(0, Team.Player, UnitCatalog.Warrior, 1, 1),
+                Make(1, Team.Enemy, UnitCatalog.Warrior, 1, 1),
             }));
         }
     }

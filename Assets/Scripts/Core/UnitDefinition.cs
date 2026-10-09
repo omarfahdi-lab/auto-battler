@@ -2,28 +2,53 @@ using System.Collections.Generic;
 
 namespace AutoBattler.Core
 {
-    /// <summary>Static data for a unit type. Cooldowns are measured in battle ticks.</summary>
+    public enum UnitRole
+    {
+        /// <summary>Attacks the nearest enemy.</summary>
+        Fighter,
+        /// <summary>Heals the most injured ally (lowest HP fraction) and never attacks.</summary>
+        Healer,
+    }
+
+    /// <summary>
+    /// Static data for a unit type. All timings are in battle ticks (<see cref="BattleSimulator.TicksPerSecond"/>),
+    /// which match the 10 fps animations one-to-one, so <see cref="ImpactTicks"/> is the attack sheet's impact frame.
+    /// </summary>
     public sealed class UnitDefinition
     {
         public string Id { get; }
         public string Name { get; }
         public int Cost { get; }
         public int MaxHp { get; }
-        public int Attack { get; }
+        /// <summary>Damage per hit, or HP restored per heal for healers.</summary>
+        public int Power { get; }
         public int Range { get; }
-        public int AttackCooldown { get; }
-        /// <summary>RGB colour used by the placeholder art, e.g. 0x4A90E2.</summary>
+        public UnitRole Role { get; }
+        /// <summary>Ticks between the start of one action and the start of the next.</summary>
+        public int ActionCooldown { get; }
+        /// <summary>Ticks from the start of an action until it takes effect (or the projectile is released).</summary>
+        public int ImpactTicks { get; }
+        /// <summary>Whether the action launches a projectile that must travel to the target.</summary>
+        public bool UsesProjectile { get; }
+        /// <summary>Ticks spent moving one cell.</summary>
+        public int MoveTicks { get; }
+        /// <summary>RGB accent colour for UI, e.g. 0x4A90E2.</summary>
         public int Color { get; }
 
-        public UnitDefinition(string id, string name, int cost, int maxHp, int attack, int range, int attackCooldown, int color)
+        public UnitDefinition(string id, string name, int cost, int maxHp, int power, int range, UnitRole role,
+            int actionCooldown, int impactTicks, bool usesProjectile, int moveTicks, int color)
         {
             Id = id;
             Name = name;
             Cost = cost;
             MaxHp = maxHp;
-            Attack = attack;
+            Power = power;
             Range = range;
-            AttackCooldown = attackCooldown;
+            Role = role;
+            ActionCooldown = actionCooldown;
+            ImpactTicks = impactTicks;
+            UsesProjectile = usesProjectile;
+            MoveTicks = moveTicks;
             Color = color;
         }
 
@@ -32,12 +57,22 @@ namespace AutoBattler.Core
 
     public static class UnitCatalog
     {
-        public static readonly UnitDefinition Knight = new UnitDefinition("knight", "Knight", 1, 60, 6, 1, 3, 0x4A90E2);
-        public static readonly UnitDefinition Archer = new UnitDefinition("archer", "Archer", 1, 35, 5, 3, 3, 0x7ED321);
-        public static readonly UnitDefinition Rogue = new UnitDefinition("rogue", "Rogue", 2, 45, 5, 1, 2, 0x9B59B6);
-        public static readonly UnitDefinition Mage = new UnitDefinition("mage", "Mage", 3, 30, 14, 3, 5, 0xF5A623);
-        public static readonly UnitDefinition Golem = new UnitDefinition("golem", "Golem", 3, 140, 8, 1, 4, 0x8B6F47);
+        public static readonly UnitDefinition Warrior = new UnitDefinition("warrior", "Warrior", cost: 1, maxHp: 60,
+            power: 6, range: 1, UnitRole.Fighter, actionCooldown: 8, impactTicks: 2, usesProjectile: false,
+            moveTicks: 3, color: 0x4A90E2);
 
-        public static readonly IReadOnlyList<UnitDefinition> All = new[] { Knight, Archer, Rogue, Mage, Golem };
+        public static readonly UnitDefinition Archer = new UnitDefinition("archer", "Archer", cost: 1, maxHp: 35,
+            power: 6, range: 3, UnitRole.Fighter, actionCooldown: 12, impactTicks: 5, usesProjectile: true,
+            moveTicks: 3, color: 0x7ED321);
+
+        public static readonly UnitDefinition Lancer = new UnitDefinition("lancer", "Lancer", cost: 3, maxHp: 140,
+            power: 9, range: 1, UnitRole.Fighter, actionCooldown: 10, impactTicks: 1, usesProjectile: false,
+            moveTicks: 4, color: 0x8B6F47);
+
+        public static readonly UnitDefinition Monk = new UnitDefinition("monk", "Monk", cost: 3, maxHp: 40,
+            power: 12, range: 3, UnitRole.Healer, actionCooldown: 16, impactTicks: 5, usesProjectile: false,
+            moveTicks: 3, color: 0xF5A623);
+
+        public static readonly IReadOnlyList<UnitDefinition> All = new[] { Warrior, Archer, Lancer, Monk };
     }
 }

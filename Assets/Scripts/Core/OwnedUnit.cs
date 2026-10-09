@@ -19,7 +19,7 @@ namespace AutoBattler.Core
         }
 
         public int MaxHp => Definition.MaxHp * StatMultiplier[Stars];
-        public int Attack => Definition.Attack * StatMultiplier[Stars];
+        public int Power => Definition.Power * StatMultiplier[Stars];
 
         /// <summary>Number of 1-star copies this unit represents.</summary>
         public int CopyCount => (int)Math.Pow(3, Stars - 1);

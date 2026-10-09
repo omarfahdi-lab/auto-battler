@@ -15,6 +15,11 @@ namespace AutoBattler.Core
         public GridPos Position { get; internal set; }
         public int Hp { get; internal set; }
         public int Cooldown { get; internal set; }
+        public int MoveCooldown { get; internal set; }
+
+        /// <summary>Target of the action currently winding up, or -1.</summary>
+        internal int PendingTargetId { get; set; } = -1;
+        internal int PendingImpactTick { get; set; }
 
         public Combatant(int id, Team team, OwnedUnit unit, GridPos position)
         {
@@ -25,9 +30,11 @@ namespace AutoBattler.Core
             Hp = unit.MaxHp;
         }
 
+        public UnitDefinition Definition => Unit.Definition;
         public bool IsAlive => Hp > 0;
+        public bool IsActing => PendingTargetId >= 0;
         public int MaxHp => Unit.MaxHp;
-        public int Attack => Unit.Attack;
+        public int Power => Unit.Power;
         public int Range => Unit.Definition.Range;
     }
 }

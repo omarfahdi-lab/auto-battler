@@ -45,12 +45,12 @@ namespace AutoBattler.Tests
         [Test]
         public void OwnedUnit_StatsAndSellValueScaleWithStars()
         {
-            var one = new OwnedUnit(UnitCatalog.Rogue, 1);
-            var three = new OwnedUnit(UnitCatalog.Rogue, 3);
+            var one = new OwnedUnit(UnitCatalog.Warrior, 1);
+            var three = new OwnedUnit(UnitCatalog.Warrior, 3);
 
-            Assert.That(three.Attack, Is.GreaterThan(one.Attack));
-            Assert.That(three.SellValue, Is.EqualTo(UnitCatalog.Rogue.Cost * 9));
-            Assert.That(three.CanMergeWith(new OwnedUnit(UnitCatalog.Rogue, 3)), Is.False);
+            Assert.That(three.Power, Is.GreaterThan(one.Power));
+            Assert.That(three.SellValue, Is.EqualTo(UnitCatalog.Warrior.Cost * 9));
+            Assert.That(three.CanMergeWith(new OwnedUnit(UnitCatalog.Warrior, 3)), Is.False);
         }
     }
 }

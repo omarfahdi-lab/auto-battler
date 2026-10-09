@@ -28,11 +28,11 @@ namespace AutoBattler.Tests
         public void Buy_SpendsGoldAndPlacesUnitOnBench()
         {
             var s = NewSession();
-            StockShop(s, UnitCatalog.Rogue);
+            StockShop(s, UnitCatalog.Lancer);
 
             Assert.That(s.TryBuy(0));
-            Assert.That(s.Gold, Is.EqualTo(GameSession.StartingGold - UnitCatalog.Rogue.Cost));
-            Assert.That(s.Get(Slot.Bench(0)).Definition, Is.EqualTo(UnitCatalog.Rogue));
+            Assert.That(s.Gold, Is.EqualTo(GameSession.StartingGold - UnitCatalog.Lancer.Cost));
+            Assert.That(s.Get(Slot.Bench(0)).Definition, Is.EqualTo(UnitCatalog.Lancer));
             Assert.That(s.Shop[0], Is.Null);
             Assert.That(s.TryBuy(0), Is.False, "an emptied slot cannot be bought twice");
         }
@@ -41,7 +41,7 @@ namespace AutoBattler.Tests
         public void Buy_FailsWithoutGold()
         {
             var s = NewSession();
-            StockShop(s, UnitCatalog.Mage);
+            StockShop(s, UnitCatalog.Monk);
 
             Assert.That(s.TryBuy(0) && s.TryBuy(1) && s.TryBuy(2));
             Assert.That(s.Gold, Is.EqualTo(1));
@@ -52,7 +52,7 @@ namespace AutoBattler.Tests
         public void ThreeCopies_MergeIntoTwoStar()
         {
             var s = NewSession();
-            StockShop(s, UnitCatalog.Knight);
+            StockShop(s, UnitCatalog.Warrior);
 
             s.TryBuy(0);
             s.TryBuy(1);
@@ -62,14 +62,14 @@ namespace AutoBattler.Tests
             Assert.That(merged.Stars, Is.EqualTo(2));
             Assert.That(s.Get(Slot.Bench(1)), Is.Null);
             Assert.That(s.Get(Slot.Bench(2)), Is.Null);
-            Assert.That(merged.MaxHp, Is.EqualTo(UnitCatalog.Knight.MaxHp * 2));
+            Assert.That(merged.MaxHp, Is.EqualTo(UnitCatalog.Warrior.MaxHp * 2));
         }
 
         [Test]
         public void Merge_KeepsUpgradedUnitOnBoard()
         {
             var s = NewSession();
-            StockShop(s, UnitCatalog.Knight);
+            StockShop(s, UnitCatalog.Warrior);
             var cell = Slot.Board(new GridPos(2, 1));
 
             s.TryBuy(0);
@@ -85,28 +85,40 @@ namespace AutoBattler.Tests
         public void Buy_CompletingMergeAllowedWhenBenchFull()
         {
             var s = NewSession();
-            s.Shop.Set(0, UnitCatalog.Knight);
+            s.Shop.Set(0, UnitCatalog.Warrior);
             s.TryBuy(0);
             s.TryMove(Slot.Bench(0), Slot.Board(new GridPos(0, 0)));
             PlayRounds(s, 3); // earn enough gold to fill the bench
 
-            var fill = new[]
+            // Ends with bench: Archer 2*, Archer, Lancer x2, Monk x2, Warrior x2 (the board Warrior became 2*).
+            var buys = new[]
             {
-                UnitCatalog.Archer, UnitCatalog.Archer, UnitCatalog.Knight, UnitCatalog.Rogue,
-                UnitCatalog.Rogue, UnitCatalog.Mage, UnitCatalog.Mage, UnitCatalog.Golem,
+                UnitCatalog.Archer, UnitCatalog.Archer, UnitCatalog.Archer, UnitCatalog.Archer,
+                UnitCatalog.Lancer, UnitCatalog.Lancer, UnitCatalog.Monk, UnitCatalog.Monk,
+                UnitCatalog.Warrior, UnitCatalog.Warrior, UnitCatalog.Warrior, UnitCatalog.Warrior,
             };
-            foreach (var def in fill)
+            foreach (var def in buys)
             {
                 s.Shop.Set(0, def);
                 Assert.That(s.TryBuy(0), $"buying {def}");
             }
-            s.Shop.Set(0, UnitCatalog.Golem);
-            Assert.That(s.CanBuy(0), Is.False, "bench is full and a second golem cannot merge");
+            for (int i = 0; i < GameSession.BenchSize; i++) Assert.That(s.Get(Slot.Bench(i)), Is.Not.Null);
 
             s.Shop.Set(0, UnitCatalog.Archer);
-            Assert.That(s.TryBuy(0), "third archer should merge even though the bench is full");
-            Assert.That(s.Get(Slot.Bench(0)).Stars, Is.EqualTo(2));
-            Assert.That(s.Get(Slot.Bench(1)), Is.Null);
+            Assert.That(s.CanBuy(0), Is.False, "bench is full and only one 1-star archer is owned");
+
+            s.Shop.Set(0, UnitCatalog.Lancer);
+            Assert.That(s.TryBuy(0), "third lancer should merge even though the bench is full");
+            Assert.That(CountOwned(s, UnitCatalog.Lancer, 2), Is.EqualTo(1));
+            Assert.That(CountOwned(s, UnitCatalog.Lancer, 1), Is.Zero);
+        }
+
+        private static int CountOwned(GameSession s, UnitDefinition def, int stars)
+        {
+            int n = 0;
+            foreach (var slot in s.OccupiedSlots())
+                if (s.Get(slot).Definition == def && s.Get(slot).Stars == stars) n++;
+            return n;
         }
 
         private static void PlayRounds(GameSession s, int rounds)
@@ -126,9 +138,9 @@ namespace AutoBattler.Tests
             var s = NewSession();
             StockShop(s, UnitCatalog.Archer);
             for (int i = 0; i < 4; i++) s.TryBuy(i); // merges first three
-            StockShop(s, UnitCatalog.Knight);
+            StockShop(s, UnitCatalog.Warrior);
             for (int i = 0; i < 2; i++) s.TryBuy(i);
-            StockShop(s, UnitCatalog.Rogue);
+            StockShop(s, UnitCatalog.Lancer);
             s.TryBuy(0);
 
             int placed = 0;
@@ -143,21 +155,21 @@ namespace AutoBattler.Tests
         public void Move_SwapsOccupiedSlots()
         {
             var s = NewSession();
-            s.Shop.Set(0, UnitCatalog.Knight);
+            s.Shop.Set(0, UnitCatalog.Warrior);
             s.Shop.Set(1, UnitCatalog.Archer);
             s.TryBuy(0);
             s.TryBuy(1);
 
             Assert.That(s.TryMove(Slot.Bench(0), Slot.Bench(1)));
             Assert.That(s.Get(Slot.Bench(0)).Definition, Is.EqualTo(UnitCatalog.Archer));
-            Assert.That(s.Get(Slot.Bench(1)).Definition, Is.EqualTo(UnitCatalog.Knight));
+            Assert.That(s.Get(Slot.Bench(1)).Definition, Is.EqualTo(UnitCatalog.Warrior));
         }
 
         [Test]
         public void Sell_RefundsCostOfAllCopies()
         {
             var s = NewSession();
-            StockShop(s, UnitCatalog.Knight);
+            StockShop(s, UnitCatalog.Warrior);
             s.TryBuy(0);
             s.TryBuy(1);
             s.TryBuy(2);
