@@ -14,11 +14,18 @@ they merge into a stronger, starred version. Survive all 10 rounds to win.
 | Phase  | What happens |
 | ------ | ------------ |
 | Shop   | You get gold every round (5 + 1 per 10 gold banked, max +3, +1 for a win). Buy units, reroll the shop, sell units, and arrange your board. |
-| Battle | Units act on their own: each one targets the nearest enemy, walks toward it, and attacks once it's in range. |
+| Battle | Units act on their own: fighters walk to the nearest enemy and attack once it's in range, archers shoot arrows that have to fly to their target, and monks heal whichever ally is most hurt. |
 | Result | Losing costs 2 health plus 1 for each enemy still standing. You lose at 0 health and win by clearing round 10. |
 
-Units: **Knight** (1g, sturdy melee), **Archer** (1g, range 3), **Rogue** (2g, fast melee), **Mage** (3g, heavy
-ranged hits), **Golem** (3g, huge HP). You can field 3 units in round 1, and one more each round after that (up to 8).
+| Unit | Cost | Role |
+| ---- | ---- | ---- |
+| **Warrior** | 1g | Sturdy melee fighter |
+| **Archer** | 1g | Fires arrows from 3 cells away |
+| **Lancer** | 3g | Tank with a heavy lance thrust (in shops from round 3) |
+| **Monk** | 3g | Heals the ally with the lowest HP fraction, never attacks (in shops from round 3) |
+
+You play the blue faction and fight the red one. You can field 3 units in round 1, plus one more each round after
+that (up to 8).
 
 ## Controls
 
@@ -43,14 +50,28 @@ Assets/
 ```
 
 - **Core** holds all the rules. `GameSession` runs the economy, the shop, bench and board slots, merging, and the
-  round loop. `BattleSimulator` is a deterministic, tick-based battle that returns `BattleEvent`s (move, attack,
-  death). `EnemyWaves` and `Shop` use an injected `IRandom` (`SeededRandom`), so a seed always replays the same run.
+  round loop. `BattleSimulator` is a deterministic battle running at 10 ticks per second. It returns `BattleEvent`s
+  (move, action start, projectile launch, damage, heal, death). Each action takes effect `ImpactTicks` after it
+  starts, and that number is the impact frame of the unit's 10 fps attack animation, so hits land on the right frame.
+  Arrows are simulated projectiles: if their target dies while they are in flight, they miss. `EnemyWaves` and
+  `Shop` use an injected `IRandom` (`SeededRandom`), so a seed always replays the same run.
 - **Game** only draws and forwards input. `GameBootstrap` runs from
   `[RuntimeInitializeOnLoadMethod(AfterSceneLoad)]` and builds everything in code: camera, global 2D light,
-  EventSystem, generated placeholder sprites (`SpriteFactory`), a UI Toolkit HUD (`Hud`), and the `GameController`,
-  which plays battle events back at a fixed tick rate. Nothing needs to be wired up in the editor.
+  EventSystem, a UI Toolkit HUD (`Hud`), and the `GameController`, which plays battle events back at the tick rate.
+  Nothing needs to be wired up in the editor.
+- **Art** (`Art`) loads the Tiny Swords sheets from `Assets/Resources/Art/TinySwords` and slices them at runtime.
+  Unit sheets are strips of square frames. The pack's UI pieces come with gaps between them, so they are stitched
+  into 9-slice textures, then used for the wood panels, paper shop cards, ribbons, buttons, and the unit HP bars.
+  `SpriteAnimator` plays the strips at 10 fps. The editor-only `TinySwordsImporter` (an `AssetPostprocessor`) imports
+  the pack with Point filtering, no compression, and 64 pixels per unit, so one terrain tile is one board cell.
 - Input goes through the Input System package (`Mouse.current` / `Keyboard.current`, and `InputSystemUIInputModule`
   for the UI).
+
+## Credits
+
+Art: [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) by **Pixel Frog**. Only the files this game uses are
+included, under `Assets/Resources/Art/TinySwords`. Check the pack's itch.io page for its license terms before you
+redistribute them.
 
 ## Running
 
