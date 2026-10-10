@@ -19,6 +19,7 @@ namespace AutoBattler.Game
         private static readonly Color HighlightTile = new Color(1f, 0.9f, 0.35f, 0.4f);
 
         private Camera _camera;
+        private AudioManager _audio;
         private Hud _hud;
         private Transform _unitRoot;
         private SpriteRenderer _highlight;
@@ -34,9 +35,10 @@ namespace AutoBattler.Game
         private float _tickTimer;
         private float _endTimer;
 
-        public void Initialize(Camera camera, int seed)
+        public void Initialize(Camera camera, int seed, AudioManager audio)
         {
             _camera = camera;
+            _audio = audio;
             _seed = seed;
             // Frame the 8x6 board plus bench; side panels fit in the remaining width.
             _camera.orthographicSize = 5.2f;
@@ -312,13 +314,16 @@ namespace AutoBattler.Game
                     break;
                 case BattleEventType.ActionStart:
                     if (source != null) source.PlayAction(CellToWorld(e.To));
+                    PlaySwing(_battle.Find(e.SourceId));
                     break;
                 case BattleEventType.ProjectileLaunch:
+                    _audio.Play(Sfx.BowRelease);
                     if (source != null && target != null)
                         ArrowView.Launch(_unitRoot, Art.Arrow(_battle.Find(e.SourceId).Team),
                             source.transform.position + ArrowView.ArrowHeight, target.transform, e.Ticks * TickSeconds);
                     break;
                 case BattleEventType.Damage:
+                    PlayHit(_battle.Find(e.SourceId));
                     if (target != null)
                     {
                         var c = _battle.Find(e.TargetId);
@@ -331,10 +336,12 @@ namespace AutoBattler.Game
                     {
                         var c = _battle.Find(e.TargetId);
                         target.SetHealth(c.Hp, c.MaxHp);
+                        _audio.Play(Sfx.Heal, 0.7f);
                         OneShotEffect.Play(_unitRoot, Art.HealEffect(c.Team), target.transform.position + Vector3.up * 0.2f, 6000);
                     }
                     break;
                 case BattleEventType.Death:
+                    _audio.Play(Sfx.Death);
                     if (source != null)
                     {
                         source.Die();
@@ -342,6 +349,21 @@ namespace AutoBattler.Game
                     }
                     break;
             }
+        }
+
+        private void PlaySwing(Combatant attacker)
+        {
+            if (attacker == null) return;
+            if (attacker.Definition == UnitCatalog.Warrior) _audio.Play(Sfx.WarriorSwing, 0.8f);
+            else if (attacker.Definition == UnitCatalog.Lancer) _audio.Play(Sfx.LancerSwing, 0.8f);
+        }
+
+        private void PlayHit(Combatant attacker)
+        {
+            if (attacker == null) return;
+            if (attacker.Definition.UsesProjectile) _audio.Play(Sfx.ArrowImpact);
+            else if (attacker.Definition == UnitCatalog.Lancer || attacker.IsBoss) _audio.Play(Sfx.HeavyHit);
+            else _audio.Play(Sfx.MeleeHit);
         }
 
         private void ClearBattleViews()

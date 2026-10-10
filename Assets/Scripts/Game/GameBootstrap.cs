@@ -18,8 +18,9 @@ namespace AutoBattler.Game
             EnsureEventSystem();
 
             var root = new GameObject("AutoBattler");
+            var audio = AudioManager.Create(root.transform);
             var controller = root.AddComponent<GameController>();
-            controller.Initialize(camera, Random.Range(int.MinValue, int.MaxValue));
+            controller.Initialize(camera, Random.Range(int.MinValue, int.MaxValue), audio);
         }
 
         private static Camera EnsureCamera()
@@ -33,6 +34,7 @@ namespace AutoBattler.Game
             camera.orthographic = true;
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.08f, 0.09f, 0.12f);
+            if (Object.FindAnyObjectByType<AudioListener>() == null) camera.gameObject.AddComponent<AudioListener>();
             return camera;
         }
 
