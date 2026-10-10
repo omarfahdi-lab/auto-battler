@@ -170,13 +170,27 @@ namespace AutoBattler.Game
 
         private IEnumerator FadeOut()
         {
+            // Fall over: freeze on the current frame, tip backwards (away from the facing direction) while sinking,
+            // and fade out over the last part of the fall.
+            const float duration = 0.55f;
+            _animator.enabled = false;
+            _target = transform.position; // stop any walk in progress
+            var body = _body.transform;
+            var startPos = body.localPosition;
+            float tipAngle = _body.flipX ? -85f : 85f;
             var renderers = GetComponentsInChildren<SpriteRenderer>();
-            for (float t = 0f; t < 0.3f; t += Time.deltaTime)
+
+            for (float t = 0f; t < duration; t += Time.deltaTime)
             {
+                float k = t / duration;
+                float fall = 1f - (1f - k) * (1f - k); // ease out
+                body.localRotation = Quaternion.Euler(0f, 0f, tipAngle * fall);
+                body.localPosition = startPos + Vector3.down * (0.35f * fall);
+                float alpha = k < 0.35f ? 1f : 1f - (k - 0.35f) / 0.65f;
                 foreach (var r in renderers)
                 {
                     var c = r.color;
-                    c.a = 1f - t / 0.3f;
+                    c.a = alpha;
                     r.color = c;
                 }
                 yield return null;
