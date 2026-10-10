@@ -102,7 +102,11 @@ class synergies too. **Rounds 5 and 10 are boss rounds:** a 2-star (round 5) or 
 | `S` | Sell the selected unit |
 | Click an item, then a unit | Equip the item |
 | `1`–`3` or click a card | Pick a reward after a win |
-| `Space` | Start the battle |
+| `Space` | Start the battle (or leave the title screen) |
+| `T` or the Speed button | Toggle battle speed between 1x and 2x |
+| `M` or the Sound button | Mute/unmute (the button cycles 100% → 60% → 30% → off) |
+
+Sound and speed settings are saved between sessions.
 
 ## Architecture
 
@@ -136,6 +140,14 @@ Tools/
   into 9-slice textures, then used for the wood panels, paper shop cards, ribbons, buttons, and the unit HP bars.
   `SpriteAnimator` plays the strips at 10 fps. The editor-only `TinySwordsImporter` (an `AssetPostprocessor`) imports
   the pack with Point filtering, no compression, and 64 pixels per unit, so one terrain tile is one board cell.
+- **Audio** (`AudioManager`) is created by the bootstrap and loads Kenney clips from `Assets/Resources/Audio` with
+  `Resources.Load`. Combat sounds play on the battle events (swing on attack start, hits on the impact frame, bow
+  release and arrow impact, heal chime, death thud), with a few variants each and ±8% random pitch. Shop actions,
+  UI clicks, round start, boss round start, victory and defeat have their own sounds and jingles. The editor-only
+  `AudioImportSettings` makes effects mono and compresses all clips.
+- **Polish:** a title screen with a short how-to-play, screen shake when a boss lands a hit (bigger when it dies),
+  units that tip over and fade when they die, and a 1x/2x battle speed toggle (`Time.timeScale` during battles,
+  so animations and impact frames stay in sync).
 - Input goes through the Input System package (`Mouse.current` / `Keyboard.current`, and `InputSystemUIInputModule`
   for the UI).
 
@@ -196,9 +208,13 @@ A test (`TunedBalance_KeepsTheBotNearTheTargetWinRate`) runs 300 seeded runs and
 
 ## Credits
 
-Art: [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) by **Pixel Frog**. Only the files this game uses are
-included, under `Assets/Resources/Art/TinySwords`. Check the pack's itch.io page for its license terms before you
-redistribute them.
+- **Art:** [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) by **Pixel Frog**. Only the files this game
+  uses are included, under `Assets/Resources/Art/TinySwords`. Check the pack's itch.io page for its license terms
+  before you redistribute them.
+- **Audio:** [RPG Audio](https://kenney.nl/assets/rpg-audio), [Impact Sounds](https://kenney.nl/assets/impact-sounds),
+  [Interface Sounds](https://kenney.nl/assets/interface-sounds) and
+  [Music Jingles](https://kenney.nl/assets/music-jingles) by **Kenney** ([kenney.nl](https://kenney.nl)), CC0.
+  Only the 29 clips the game uses are included, under `Assets/Resources/Audio`.
 
 ## Running
 
@@ -215,6 +231,11 @@ From the command line (close the editor first):
   -batchmode -nographics -projectPath . \
   -runTests -testPlatform EditMode -testResults results.xml
 ```
+
+## Hosting the WebGL build
+
+The build uses Brotli compression, so the server must send `Content-Encoding: br` for the `.br` files. If your host
+doesn't (some don't), turn on **Player Settings → Publishing Settings → Decompression Fallback** before building.
 
 ## CI
 
