@@ -65,6 +65,7 @@ namespace AutoBattler.Game
             _hud.RewardChosen += ChooseReward;
             _hud.VolumeClicked += CycleVolume;
             _hud.SpeedClicked += ToggleSpeed;
+            _hud.PlayClicked += StartFromTitle;
 
             _settings = PlayerSettings.Deserialize(PlayerPrefs.GetString(SettingsKey, ""));
             ApplySettings();
@@ -445,6 +446,13 @@ namespace AutoBattler.Game
             }
         }
 
+        private void StartFromTitle()
+        {
+            if (!_hud.IsTitleVisible) return;
+            _hud.HideTitle();
+            _audio.Play(Sfx.Confirm);
+        }
+
         // ---- Settings ------------------------------------------------------------------------------------------
 
         private void CycleVolume()
@@ -501,6 +509,12 @@ namespace AutoBattler.Game
             if (kb.mKey.wasPressedThisFrame) ToggleMute();
             if (kb.tKey.wasPressedThisFrame) ToggleSpeed();
 
+            if (_hud.IsTitleVisible)
+            {
+                if (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame) StartFromTitle();
+                return;
+            }
+
             if (_session.Phase == Phase.Reward)
             {
                 for (int i = 0; i < _session.PendingRewards.Count; i++)
@@ -523,7 +537,7 @@ namespace AutoBattler.Game
         private void HandleMouse()
         {
             var mouse = Mouse.current;
-            if (mouse == null || _session.Phase != Phase.Shop) return;
+            if (mouse == null || _session.Phase != Phase.Shop || _hud.IsTitleVisible) return;
 
             if (mouse.rightButton.wasPressedThisFrame)
             {

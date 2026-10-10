@@ -32,11 +32,11 @@ namespace AutoBattler.Game
         private readonly Label[] _shopLabels = new Label[Shop.SlotCount];
         private readonly Button _reroll, _xp, _sell, _fight, _restart, _volume, _speed;
         private readonly VisualElement _settingsRow;
-        private readonly VisualElement _rewardOverlay, _rewardCards;
+        private readonly VisualElement _rewardOverlay, _rewardCards, _titleOverlay;
         private readonly Label _rewardTitle;
 
         public event Action<int> BuyClicked, ItemClicked, RewardChosen;
-        public event Action RerollClicked, BuyXpClicked, SellClicked, FightClicked, RestartClicked, VolumeClicked, SpeedClicked;
+        public event Action RerollClicked, BuyXpClicked, SellClicked, FightClicked, RestartClicked, VolumeClicked, SpeedClicked, PlayClicked;
 
         public Hud(Transform parent)
         {
@@ -93,7 +93,7 @@ namespace AutoBattler.Game
             _message.style.marginTop = 8;
             var help = Text(left, 12, DimText);
             help.style.marginTop = 6;
-            help.text = "1-5 buy · R reroll · F buy XP · S sell\nSpace fight · T speed · M mute · Right-click cancel";
+            help.text = "1-5 buy · R reroll · F XP · S sell · Space fight\nT speed · M mute · Right-click cancel";
 
             // ---- Right: shop ----
             var right = Panel(root);
@@ -127,15 +127,7 @@ namespace AutoBattler.Game
             }
 
             // ---- Reward picker (hidden until a win) ----
-            _rewardOverlay = new VisualElement();
-            _rewardOverlay.style.position = Position.Absolute;
-            _rewardOverlay.style.left = _rewardOverlay.style.right = 0;
-            _rewardOverlay.style.top = _rewardOverlay.style.bottom = 0;
-            _rewardOverlay.style.backgroundColor = new Color(0f, 0f, 0f, 0.55f);
-            _rewardOverlay.style.alignItems = Align.Center;
-            _rewardOverlay.style.justifyContent = Justify.Center;
-            _rewardOverlay.style.display = DisplayStyle.None;
-            root.Add(_rewardOverlay);
+            _rewardOverlay = Overlay(root, 0.55f);
 
             var rewardPanel = new VisualElement();
             ApplySlices(rewardPanel, Art.WoodPanel());
@@ -149,6 +141,77 @@ namespace AutoBattler.Game
             _rewardCards.style.flexDirection = FlexDirection.Row;
             _rewardCards.style.justifyContent = Justify.SpaceBetween;
             rewardPanel.Add(_rewardCards);
+
+            _titleOverlay = BuildTitle(root);
+        }
+
+        // ---- Title screen ----
+
+        private VisualElement BuildTitle(VisualElement root)
+        {
+            var overlay = Overlay(root, 0.7f);
+            overlay.style.display = DisplayStyle.Flex;
+
+            var panel = new VisualElement();
+            ApplySlices(panel, Art.WoodPanel());
+            panel.style.width = 560;
+            panel.style.paddingLeft = panel.style.paddingRight = 40;
+            panel.style.paddingTop = 22;
+            panel.style.paddingBottom = 48;
+            overlay.Add(panel);
+
+            var title = Ribbon(panel, "AUTO BATTLER", row: 0);
+            title.style.height = 60;
+            title.style.fontSize = 30;
+            var tagline = Text(panel, 16, MessageText, "Build an army, let it fight, survive ten rounds.");
+            tagline.style.unityTextAlign = TextAnchor.MiddleCenter;
+            tagline.style.marginBottom = 12;
+
+            Heading(panel, "How to play");
+            foreach (var line in new[]
+            {
+                "Buy units in the shop, then click a unit and a tile to place it on your (blue) half.",
+                "Press FIGHT. Units battle on their own; losing costs health.",
+                "Three copies of a unit merge into a stronger star level.",
+                "Field 2 or 4 of a class for a synergy bonus.",
+                "Win rounds to pick items and team augments. Rounds 5 and 10 are bosses: beat round 10 to win.",
+                "Buy XP to field more units and find 3g units more often. Gold pays interest, but spending usually wins.",
+            })
+            {
+                // The built-in runtime font has no bullet glyph, so use a dash.
+                var row = Text(panel, 14, LightText, "-  " + line);
+                row.style.marginBottom = 4;
+            }
+
+            var keys = Text(panel, 12, DimText,
+                "Keys: 1-5 buy · R reroll · F XP · S sell · Space fight · T speed · M mute");
+            keys.style.marginTop = 8;
+            keys.style.unityTextAlign = TextAnchor.MiddleCenter;
+
+            var play = BigButton(panel, "PLAY  [Space]", red: false, () => PlayClicked?.Invoke());
+            play.style.height = 56;
+            play.style.fontSize = 22;
+            play.style.marginTop = 14;
+            play.style.marginLeft = play.style.marginRight = 110;
+            return overlay;
+        }
+
+        public bool IsTitleVisible => _titleOverlay.style.display == DisplayStyle.Flex;
+
+        public void HideTitle() => _titleOverlay.style.display = DisplayStyle.None;
+
+        private static VisualElement Overlay(VisualElement root, float dim)
+        {
+            var overlay = new VisualElement();
+            overlay.style.position = Position.Absolute;
+            overlay.style.left = overlay.style.right = 0;
+            overlay.style.top = overlay.style.bottom = 0;
+            overlay.style.backgroundColor = new Color(0f, 0f, 0f, dim);
+            overlay.style.alignItems = Align.Center;
+            overlay.style.justifyContent = Justify.Center;
+            overlay.style.display = DisplayStyle.None;
+            root.Add(overlay);
+            return overlay;
         }
 
         /// <summary>True if the screen-space point (origin bottom-left) is over an interactive UI element.</summary>
