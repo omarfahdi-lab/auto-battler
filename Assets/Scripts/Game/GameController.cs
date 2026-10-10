@@ -152,21 +152,44 @@ namespace AutoBattler.Game
 
         private void Buy(int shopSlot)
         {
-            if (_session.TryBuy(shopSlot)) RefreshShopPhase();
-            else if (_session.Phase == Phase.Shop) _hud.SetMessage("Can't buy that: not enough gold or bench space.");
+            if (_session.TryBuy(shopSlot))
+            {
+                _audio.Play(Sfx.Buy);
+                RefreshShopPhase();
+            }
+            else if (_session.Phase == Phase.Shop)
+            {
+                _audio.Play(Sfx.Error);
+                _hud.SetMessage("Can't buy that: not enough gold or bench space.");
+            }
         }
 
         private void Reroll()
         {
-            if (_session.TryReroll()) RefreshShopPhase();
+            if (_session.Phase != Phase.Shop) return;
+            if (_session.TryReroll())
+            {
+                _audio.Play(Sfx.Reroll);
+                RefreshShopPhase();
+            }
+            else _audio.Play(Sfx.Error);
         }
 
         private void BuyXp()
         {
+            if (_session.Phase != Phase.Shop) return;
             int level = _session.Level;
-            if (!_session.TryBuyXp()) return;
+            if (!_session.TryBuyXp())
+            {
+                _audio.Play(Sfx.Error);
+                return;
+            }
+            _audio.Play(Sfx.Xp);
             if (_session.Level > level)
+            {
+                _audio.Play(Sfx.Confirm);
                 _hud.SetMessage($"Level {_session.Level}! You can field {_session.BoardCapacity} units, and 3g units show up more often.");
+            }
             RefreshShopPhase();
         }
 
@@ -175,6 +198,7 @@ namespace AutoBattler.Game
             if (_session.Phase != Phase.Shop) return;
             _selected = null;
             _selectedItem = _selectedItem == index ? -1 : index;
+            _audio.Play(Sfx.Click);
             if (_selectedItem >= 0) _hud.SetMessage($"Click a unit to give it the {_session.Inventory[index].Name}.");
             RefreshShopPhase();
         }
@@ -185,6 +209,7 @@ namespace AutoBattler.Game
             if (index < 0 || index >= options.Count) return;
             var choice = options[index];
             if (!_session.ChooseReward(index)) return;
+            _audio.Play(Sfx.Confirm);
             _hud.HideRewards();
             _hud.SetMessage(choice.Kind == RewardKind.Item
                 ? $"Got the {choice.Name}. Click it under Items, then a unit to equip it."
@@ -196,6 +221,7 @@ namespace AutoBattler.Game
         {
             if (_selected.HasValue && _session.TrySell(_selected.Value))
             {
+                _audio.Play(Sfx.Sell);
                 _selected = null;
                 RefreshShopPhase();
             }
@@ -204,6 +230,7 @@ namespace AutoBattler.Game
         private void ClickSlot(Slot slot)
         {
             if (_session.Phase != Phase.Shop) return;
+            _audio.Play(Sfx.Click);
 
             if (_selectedItem >= 0)
             {
@@ -217,7 +244,10 @@ namespace AutoBattler.Game
                 var from = _selected.Value;
                 _selected = null;
                 if (!from.Equals(slot) && !_session.TryMove(from, slot))
+                {
+                    _audio.Play(Sfx.Error);
                     _hud.SetMessage($"Board is full ({_session.BoardCapacity} units this round).");
+                }
             }
             else if (_session.Get(slot) != null)
             {
@@ -252,12 +282,15 @@ namespace AutoBattler.Game
 
         private void StartBattle()
         {
+            if (_session.Phase != Phase.Shop) return;
             _battle = _session.StartBattle();
             if (_battle == null)
             {
+                _audio.Play(Sfx.Error);
                 _hud.SetMessage("Place at least one unit on the board first.");
                 return;
             }
+            _audio.PlayJingle(EnemyWaves.IsBossRound(_session.Round) ? Jingle.BossRound : Jingle.RoundStart);
 
             _selected = null;
             _selectedItem = -1;
@@ -296,6 +329,8 @@ namespace AutoBattler.Game
             _battle = null;
             ClearBattleViews();
             _hud.SetMessage(Describe(result));
+            if (_session.Phase == Phase.Victory) _audio.PlayJingle(Jingle.Victory);
+            else if (_session.Phase == Phase.Defeat) _audio.PlayJingle(Jingle.Defeat);
             if (_session.Phase == Phase.Reward)
                 _hud.ShowRewards(_session.PendingRewards, bossReward: EnemyWaves.IsBossRound(round));
             RefreshShopPhase();
