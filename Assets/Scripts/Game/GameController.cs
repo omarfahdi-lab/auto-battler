@@ -18,8 +18,11 @@ namespace AutoBattler.Game
         private static readonly Color SlotMark = new Color(0.1f, 0.2f, 0.05f, 0.15f);
         private static readonly Color HighlightTile = new Color(1f, 0.9f, 0.35f, 0.4f);
 
+        private const string SettingsKey = "autobattler.settings";
+
         private Camera _camera;
         private AudioManager _audio;
+        private PlayerSettings _settings;
         private Hud _hud;
         private Transform _unitRoot;
         private SpriteRenderer _highlight;
@@ -58,6 +61,10 @@ namespace AutoBattler.Game
             _hud.BuyXpClicked += BuyXp;
             _hud.ItemClicked += SelectItem;
             _hud.RewardChosen += ChooseReward;
+            _hud.VolumeClicked += CycleVolume;
+
+            _settings = PlayerSettings.Deserialize(PlayerPrefs.GetString(SettingsKey, ""));
+            ApplySettings();
 
             NewRun();
         }
@@ -429,6 +436,35 @@ namespace AutoBattler.Game
             }
         }
 
+        // ---- Settings ------------------------------------------------------------------------------------------
+
+        private void CycleVolume()
+        {
+            _settings.CycleVolume();
+            SaveSettings();
+            _audio.Play(Sfx.Click);
+        }
+
+        private void ToggleMute()
+        {
+            _settings.ToggleMute();
+            SaveSettings();
+            _audio.Play(Sfx.Click);
+        }
+
+        private void SaveSettings()
+        {
+            PlayerPrefs.SetString(SettingsKey, _settings.Serialize());
+            PlayerPrefs.Save();
+            ApplySettings();
+        }
+
+        private void ApplySettings()
+        {
+            AudioManager.SetMasterVolume(_settings.VolumePercent);
+            _hud.ShowSettings(_settings);
+        }
+
         // ---- Input --------------------------------------------------------------------------------------------
 
         private void Update()
@@ -443,6 +479,7 @@ namespace AutoBattler.Game
         {
             var kb = Keyboard.current;
             if (kb == null) return;
+            if (kb.mKey.wasPressedThisFrame) ToggleMute();
 
             if (_session.Phase == Phase.Reward)
             {
