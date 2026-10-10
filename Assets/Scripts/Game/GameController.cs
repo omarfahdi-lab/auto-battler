@@ -22,6 +22,7 @@ namespace AutoBattler.Game
 
         private Camera _camera;
         private AudioManager _audio;
+        private CameraShake _shake;
         private PlayerSettings _settings;
         private Hud _hud;
         private Transform _unitRoot;
@@ -45,7 +46,8 @@ namespace AutoBattler.Game
             _seed = seed;
             // Frame the 8x6 board plus bench; side panels fit in the remaining width.
             _camera.orthographicSize = 5.2f;
-            _camera.transform.position = new Vector3(0f, 1.0f, -10f);
+            _shake = _camera.gameObject.AddComponent<CameraShake>();
+            _shake.SetRestPosition(new Vector3(0f, 1.0f, -10f));
             _camera.backgroundColor = Art.WaterColor();
 
             BuildTiles();
@@ -369,7 +371,9 @@ namespace AutoBattler.Game
                             source.transform.position + ArrowView.ArrowHeight, target.transform, e.Ticks * TickSeconds);
                     break;
                 case BattleEventType.Damage:
-                    PlayHit(_battle.Find(e.SourceId));
+                    var attacker = _battle.Find(e.SourceId);
+                    PlayHit(attacker);
+                    if (attacker != null && attacker.IsBoss) _shake.Shake(0.12f, 0.22f);
                     if (target != null)
                     {
                         var c = _battle.Find(e.TargetId);
@@ -388,6 +392,7 @@ namespace AutoBattler.Game
                     break;
                 case BattleEventType.Death:
                     _audio.Play(Sfx.Death);
+                    if (_battle.Find(e.SourceId)?.IsBoss == true) _shake.Shake(0.3f, 0.5f);
                     if (source != null)
                     {
                         source.Die();
