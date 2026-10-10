@@ -30,13 +30,13 @@ namespace AutoBattler.Game
         private readonly Button[] _shopButtons = new Button[Shop.SlotCount];
         private readonly VisualElement[] _portraits = new VisualElement[Shop.SlotCount];
         private readonly Label[] _shopLabels = new Label[Shop.SlotCount];
-        private readonly Button _reroll, _xp, _sell, _fight, _restart, _volume;
+        private readonly Button _reroll, _xp, _sell, _fight, _restart, _volume, _speed;
         private readonly VisualElement _settingsRow;
         private readonly VisualElement _rewardOverlay, _rewardCards;
         private readonly Label _rewardTitle;
 
         public event Action<int> BuyClicked, ItemClicked, RewardChosen;
-        public event Action RerollClicked, BuyXpClicked, SellClicked, FightClicked, RestartClicked, VolumeClicked;
+        public event Action RerollClicked, BuyXpClicked, SellClicked, FightClicked, RestartClicked, VolumeClicked, SpeedClicked;
 
         public Hud(Transform parent)
         {
@@ -93,7 +93,7 @@ namespace AutoBattler.Game
             _message.style.marginTop = 8;
             var help = Text(left, 12, DimText);
             help.style.marginTop = 6;
-            help.text = "1-5 buy · R reroll · F buy XP · S sell\nSpace fight · M mute · Right-click cancel";
+            help.text = "1-5 buy · R reroll · F buy XP · S sell\nSpace fight · T speed · M mute · Right-click cancel";
 
             // ---- Right: shop ----
             var right = Panel(root);
@@ -118,9 +118,13 @@ namespace AutoBattler.Game
             _settingsRow.style.marginTop = 6;
             right.Add(_settingsRow);
             _volume = BigButton(_settingsRow, "", red: false, () => VolumeClicked?.Invoke());
-            _volume.style.flexGrow = 1;
-            _volume.style.height = 36;
-            _volume.style.fontSize = 14;
+            _speed = BigButton(_settingsRow, "", red: false, () => SpeedClicked?.Invoke());
+            foreach (var b in new[] { _volume, _speed })
+            {
+                b.style.flexGrow = 1;
+                b.style.height = 36;
+                b.style.fontSize = 14;
+            }
 
             // ---- Reward picker (hidden until a win) ----
             _rewardOverlay = new VisualElement();
@@ -162,7 +166,8 @@ namespace AutoBattler.Game
 
         public void ShowSettings(PlayerSettings settings)
         {
-            _volume.text = settings.IsMuted ? "Sound: off  [M]" : $"Sound: {settings.VolumePercent}%  [M]";
+            _volume.text = settings.IsMuted ? "Sound off [M]" : $"Sound {settings.VolumePercent}% [M]";
+            _speed.text = $"Speed {settings.BattleSpeed}x [T]";
         }
 
         public void ShowRewards(IReadOnlyList<RewardOption> options, bool bossReward)

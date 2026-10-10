@@ -62,6 +62,7 @@ namespace AutoBattler.Game
             _hud.ItemClicked += SelectItem;
             _hud.RewardChosen += ChooseReward;
             _hud.VolumeClicked += CycleVolume;
+            _hud.SpeedClicked += ToggleSpeed;
 
             _settings = PlayerSettings.Deserialize(PlayerPrefs.GetString(SettingsKey, ""));
             ApplySettings();
@@ -73,6 +74,7 @@ namespace AutoBattler.Game
         {
             _session = new GameSession(new SeededRandom(_seed++));
             _battle = null;
+            Time.timeScale = 1f;
             _selected = null;
             _selectedItem = -1;
             ClearBattleViews();
@@ -298,6 +300,7 @@ namespace AutoBattler.Game
                 return;
             }
             _audio.PlayJingle(EnemyWaves.IsBossRound(_session.Round) ? Jingle.BossRound : Jingle.RoundStart);
+            Time.timeScale = _settings.BattleSpeed;
 
             _selected = null;
             _selectedItem = -1;
@@ -334,6 +337,7 @@ namespace AutoBattler.Game
             int round = _session.Round;
             var result = _session.CompleteBattle(_battle);
             _battle = null;
+            Time.timeScale = 1f;
             ClearBattleViews();
             _hud.SetMessage(Describe(result));
             if (_session.Phase == Phase.Victory) _audio.PlayJingle(Jingle.Victory);
@@ -452,6 +456,13 @@ namespace AutoBattler.Game
             _audio.Play(Sfx.Click);
         }
 
+        private void ToggleSpeed()
+        {
+            _settings.ToggleBattleSpeed();
+            SaveSettings();
+            _audio.Play(Sfx.Click);
+        }
+
         private void SaveSettings()
         {
             PlayerPrefs.SetString(SettingsKey, _settings.Serialize());
@@ -463,6 +474,9 @@ namespace AutoBattler.Game
         {
             AudioManager.SetMasterVolume(_settings.VolumePercent);
             _hud.ShowSettings(_settings);
+            // Speed only applies while a battle plays out; everything in it runs on scaled time, so impact frames
+            // still line up with the simulation at 2x.
+            Time.timeScale = _battle != null ? _settings.BattleSpeed : 1f;
         }
 
         // ---- Input --------------------------------------------------------------------------------------------
@@ -480,6 +494,7 @@ namespace AutoBattler.Game
             var kb = Keyboard.current;
             if (kb == null) return;
             if (kb.mKey.wasPressedThisFrame) ToggleMute();
+            if (kb.tKey.wasPressedThisFrame) ToggleSpeed();
 
             if (_session.Phase == Phase.Reward)
             {
