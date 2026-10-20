@@ -7,7 +7,7 @@ a second.
 
 ![The round 5 boss fight, played by the built-in AI demo](docs/gameplay.gif)
 
-**Play in the browser:** _coming soon on itch.io_ <!-- TODO: replace with https://<user>.itch.io/pocket-legions -->
+**Play in the browser:** [b3nd0.itch.io/pocket-legions](https://b3nd0.itch.io/pocket-legions)
 · Want to see a run without playing? Choose **Watch the AI Play** in the menu.
 
 | Start menu | Round 7 battle with active synergies |
