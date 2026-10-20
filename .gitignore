@@ -118,3 +118,6 @@ InitTestScene*.unity*
 !Tools/**/*.csproj
 Tools/**/bin/
 Tools/**/obj/
+
+# Local Claude Code instructions
+CLAUDE.md
