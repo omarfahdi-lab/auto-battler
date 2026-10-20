@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using AutoBattler.Core;
 
-/// <summary>Usage: dotnet run -c Release [runs] [seed] [bot gold reserve]</summary>
+// dotnet run -c Release -- [runs] [seed] [bot gold reserve]
 internal static class Program
 {
     private static void Main(string[] args)

@@ -10,7 +10,7 @@ namespace AutoBattler.Tests
         private static Combatant Make(int id, Team team, UnitDefinition def, int x, int y, int stars = 1) =>
             new Combatant(id, team, new OwnedUnit(def, stars), new GridPos(x, y));
 
-        /// <summary>Steps the simulation n times and returns every event with the tick it happened on.</summary>
+        // (tick, event) for every event over n ticks
         private static List<(int tick, BattleEvent e)> Run(BattleSimulator sim, int ticks)
         {
             var log = new List<(int, BattleEvent)>();
@@ -85,7 +85,7 @@ namespace AutoBattler.Tests
             var sim = new BattleSimulator(new[]
             {
                 Make(0, Team.Player, UnitCatalog.Archer, 0, 0),
-                // A healer with nobody to heal holds position at its range, so the distance stays 3.
+                // a monk with nobody to heal just stands at range, so distance stays 3
                 Make(1, Team.Enemy, UnitCatalog.Monk, 0, 3, stars: 3),
             });
 
@@ -112,7 +112,7 @@ namespace AutoBattler.Tests
             });
 
             while (sim.ProjectilesInFlight == 0) sim.Step();
-            victim.Hp = 0; // killed by something else while the arrow is in the air
+            victim.Hp = 0; // dies while the arrow is in the air
             var log = Run(sim, 10);
 
             Assert.That(log.Any(x => x.e.Type == BattleEventType.Damage && x.e.TargetId == 1), Is.False);
@@ -125,8 +125,8 @@ namespace AutoBattler.Tests
             var scratched = Make(1, Team.Player, UnitCatalog.Lancer, 2, 1);
             var wounded = Make(2, Team.Player, UnitCatalog.Archer, 4, 1);
             var enemy = Make(3, Team.Enemy, UnitCatalog.Warrior, 7, 5);
-            scratched.Hp = scratched.MaxHp - 30; // 110/140, lower absolute loss in fraction terms
-            wounded.Hp = 20;                     // 20/35, the most injured
+            scratched.Hp = scratched.MaxHp - 30; // 110/140
+            wounded.Hp = 20;                     // 20/35, most hurt
             var sim = new BattleSimulator(new[] { monk, scratched, wounded, enemy });
 
             var log = Run(sim, UnitCatalog.Monk.ImpactTicks + 1);
@@ -143,7 +143,7 @@ namespace AutoBattler.Tests
             var monk = Make(0, Team.Player, UnitCatalog.Monk, 3, 0);
             var ally = Make(1, Team.Player, UnitCatalog.Warrior, 3, 1);
             ally.Hp = ally.MaxHp - 1;
-            // A lone enemy monk never attacks, so the only HP change is the heal.
+            // enemy monk never attacks, so the heal is the only hp change
             var sim = new BattleSimulator(new[] { monk, ally, Make(2, Team.Enemy, UnitCatalog.Monk, 7, 5) });
 
             Run(sim, UnitCatalog.Monk.ImpactTicks + 1);
@@ -215,7 +215,7 @@ namespace AutoBattler.Tests
         [Test]
         public void Battle_TimesOutAsDraw()
         {
-            // Two healers can never hurt each other.
+            // two monks can't hurt each other
             var sim = new BattleSimulator(new[]
             {
                 Make(0, Team.Player, UnitCatalog.Monk, 0, 0),

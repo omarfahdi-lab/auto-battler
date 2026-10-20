@@ -3,7 +3,6 @@ using System.Text;
 
 namespace AutoBattler.Core
 {
-    /// <summary>Aggregated results for one round number across all simulated runs.</summary>
     public sealed class RoundStats
     {
         public int Reached;
@@ -34,11 +33,11 @@ namespace AutoBattler.Core
 
         public double RunWinRate => Runs == 0 ? 0 : (double)Victories / Runs;
 
-        /// <summary>A Markdown summary, as pasted into the README.</summary>
+        // markdown table (same one that's in the README)
         public string ToMarkdown()
         {
             var sb = new StringBuilder();
-            // Invariant formatting so the report reads the same in Unity and in the dotnet tool.
+            // invariant culture, otherwise Unity prints "94.0 %" and dotnet prints "94.0%"
             sb.AppendLine(FormattableString.Invariant(
                 $"{Runs} runs (seeds {Seed}-{Seed + Runs - 1}): bot won **{RunWinRate * 100:F1}%** of runs."));
             sb.AppendLine();
@@ -55,7 +54,7 @@ namespace AutoBattler.Core
         }
     }
 
-    /// <summary>Plays many seeded runs with <see cref="GreedyBot"/> to measure difficulty and economy.</summary>
+    // plays a bunch of seeded runs with the bot to check difficulty + economy
     public static class BalanceSimulation
     {
         public static BalanceReport Run(int runs, int seed = 1, GreedyBot bot = null)

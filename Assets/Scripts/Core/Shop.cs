@@ -3,14 +3,13 @@ using System.Collections.Generic;
 
 namespace AutoBattler.Core
 {
-    /// <summary>A row of units for sale. Odds per cost tier depend on the player's level.</summary>
     public sealed class Shop
     {
         public const int SlotCount = 5;
 
         private readonly UnitDefinition[] _slots = new UnitDefinition[SlotCount];
 
-        /// <summary>The unit in a slot, or null if it was bought.</summary>
+        // null once bought
         public UnitDefinition this[int slot] => _slots[slot];
 
         public void Roll(IRandom rng, int level)
@@ -25,12 +24,12 @@ namespace AutoBattler.Core
             return unit;
         }
 
-        /// <summary>Replaces the slot contents; used by tests and tooling.</summary>
+        // for tests
         public void Set(int slot, UnitDefinition unit) => _slots[slot] = unit;
 
         public static UnitDefinition Pick(IRandom rng, int level) => Pick(rng, level, UnitCatalog.All);
 
-        /// <summary>Rolls a cost tier by the level's odds, then a unit uniformly within that tier.</summary>
+        // roll the cost tier first, then a unit in that tier
         public static UnitDefinition Pick(IRandom rng, int level, IReadOnlyList<UnitDefinition> pool)
         {
             int total = 0;

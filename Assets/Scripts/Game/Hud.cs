@@ -7,10 +7,7 @@ using UnityEngine.UIElements;
 
 namespace AutoBattler.Game
 {
-    /// <summary>
-    /// UI Toolkit overlay built in code from the Tiny Swords UI pieces: run status, synergies and items on the left,
-    /// the shop on the right, and a pick-one-of-three reward screen after wins.
-    /// </summary>
+    // UI Toolkit HUD, all built in code. left = run info, right = shop, plus the reward picker
     public sealed class Hud
     {
         private const float SliceScale = 0.5f;
@@ -56,7 +53,7 @@ namespace AutoBattler.Game
 
             var root = _document.rootVisualElement;
             root.pickingMode = PickingMode.Ignore;
-            // Without a theme the root doesn't stretch to the screen; the reward overlay needs it to.
+            // no theme = root doesn't fill the screen, and the reward overlay needs it to
             root.style.position = Position.Absolute;
             root.style.left = root.style.right = root.style.top = root.style.bottom = 0;
             root.style.flexDirection = FlexDirection.Row;
@@ -66,7 +63,7 @@ namespace AutoBattler.Game
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             if (font != null) root.style.unityFontDefinition = FontDefinition.FromFont(font);
 
-            // ---- Left: run status ----
+            // left panel
             var left = Panel(root);
             Ribbon(left, "AUTO BATTLER", row: 0);
             _round = Stat(left, Art.Icon(5));
@@ -95,7 +92,7 @@ namespace AutoBattler.Game
             help.style.marginTop = 6;
             help.text = "1-5 buy · R reroll · F XP · S sell · Space fight\nT speed · M mute · Esc menu";
 
-            // ---- Right: shop ----
+            // right panel / shop
             var right = Panel(root);
             Ribbon(right, "SHOP", row: 1);
             for (int i = 0; i < Shop.SlotCount; i++) BuildShopCard(right, i);
@@ -127,7 +124,7 @@ namespace AutoBattler.Game
                 b.style.fontSize = 14;
             }
 
-            // ---- Reward picker (hidden until a win) ----
+            // reward picker, hidden until a win
             _rewardOverlay = Overlay(root, 0.55f);
 
             var rewardPanel = new VisualElement();
@@ -143,11 +140,10 @@ namespace AutoBattler.Game
             _rewardCards.style.justifyContent = Justify.SpaceBetween;
             rewardPanel.Add(_rewardCards);
 
-            // Added last so it draws above everything else.
+            // added last so it's on top
             Menu = new StartMenu(root);
         }
 
-        /// <summary>The start/pause menu overlay.</summary>
         public StartMenu Menu { get; }
 
         internal static VisualElement Overlay(VisualElement root, float dim)
@@ -164,7 +160,7 @@ namespace AutoBattler.Game
             return overlay;
         }
 
-        /// <summary>True if the screen-space point (origin bottom-left) is over an interactive UI element.</summary>
+        // so clicks on the UI don't also hit the board
         public bool IsPointerOverUi(Vector2 screenPosition)
         {
             var panel = _document.rootVisualElement.panel;
@@ -200,7 +196,6 @@ namespace AutoBattler.Game
             bool boss = EnemyWaves.IsBossRound(session.Round);
             _round.text = $"Round {session.Round} / {Balance.FinalRound}{(boss ? "  BOSS" : "")}";
             _health.text = $"Health {session.Health}";
-            // Interest is paid on the gold you still hold when the round ends.
             _gold.text = $"Gold {session.Gold}  ·  +{Balance.Interest(session.Gold)} interest";
             _level.text = session.IsMaxLevel
                 ? $"Level {session.Level} (max)"
@@ -434,7 +429,7 @@ namespace AutoBattler.Game
             button.style.unityTextAlign = TextAnchor.MiddleCenter;
             Outlined(button);
 
-            // Swap to the pressed artwork while held.
+            // pressed sprite while held
             button.RegisterCallback<PointerDownEvent>(_ => ApplySlices(button, pressed), TrickleDown.TrickleDown);
             button.RegisterCallback<PointerUpEvent>(_ => ApplySlices(button, regular));
             button.RegisterCallback<PointerLeaveEvent>(_ => ApplySlices(button, regular));

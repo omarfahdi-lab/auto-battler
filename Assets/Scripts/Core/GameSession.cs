@@ -7,7 +7,7 @@ namespace AutoBattler.Core
     {
         Shop,
         Battle,
-        /// <summary>After a win: choose one of <see cref="GameSession.PendingRewards"/> before shopping.</summary>
+        // won a fight, waiting on a reward pick
         Reward,
         Victory,
         Defeat,
@@ -19,7 +19,7 @@ namespace AutoBattler.Core
         Board,
     }
 
-    /// <summary>A place a player unit can sit: a bench slot or a cell on the player's half of the board.</summary>
+    // bench slot or a cell on the player's side
     public readonly struct Slot : IEquatable<Slot>
     {
         public readonly SlotArea Area;
@@ -46,7 +46,7 @@ namespace AutoBattler.Core
     {
         public readonly bool Won;
         public readonly int DamageTaken;
-        /// <summary>Total income for the next round (base + interest + streak + augments).</summary>
+        // base + interest + streak + augments
         public readonly int GoldEarned;
         public readonly int Interest;
         public readonly int StreakBonus;
@@ -61,7 +61,7 @@ namespace AutoBattler.Core
         }
     }
 
-    /// <summary>Whole-run state: economy, owned units, and the shop/battle round loop.</summary>
+    // the whole run: gold, units, shop and the round loop
     public sealed class GameSession
     {
         public const int BenchSize = 8;
@@ -81,7 +81,7 @@ namespace AutoBattler.Core
         public int Round { get; private set; } = 1;
         public int Level { get; private set; } = 1;
         public int Xp { get; private set; }
-        /// <summary>Positive for consecutive wins, negative for consecutive losses.</summary>
+        // + = win streak, - = loss streak
         public int Streak { get; private set; }
         public Shop Shop { get; } = new Shop();
 
@@ -89,7 +89,6 @@ namespace AutoBattler.Core
         private readonly List<AugmentDefinition> _augments = new List<AugmentDefinition>();
         private List<RewardOption> _pendingRewards = new List<RewardOption>();
 
-        /// <summary>Items won but not equipped.</summary>
         public IReadOnlyList<ItemDefinition> Inventory => _inventory;
         public IReadOnlyList<AugmentDefinition> Augments => _augments;
         public IReadOnlyList<RewardOption> PendingRewards => _pendingRewards;
@@ -112,10 +111,9 @@ namespace AutoBattler.Core
             else _board[slot.Index] = unit;
         }
 
-        /// <summary>Class synergies for the units currently on the board (inactive ones included).</summary>
         public IReadOnlyList<ActiveSynergy> ActiveSynergies => Synergies.Evaluate(_board);
 
-        /// <summary>Every bonus that applies to one of the player's units in battle.</summary>
+        // synergy + item + augments for one of your units
         public StatBonus BonusFor(OwnedUnit unit, IReadOnlyList<ActiveSynergy> synergies)
         {
             var bonus = Synergies.BonusFor(unit.Definition, synergies) + TeamBonus;
@@ -123,7 +121,6 @@ namespace AutoBattler.Core
             return bonus;
         }
 
-        /// <summary>Sum of augment bonuses that apply to every unit.</summary>
         public StatBonus TeamBonus
         {
             get
@@ -144,7 +141,6 @@ namespace AutoBattler.Core
             }
         }
 
-        /// <summary>Applies one of the pending rewards: items go to the inventory, augments take effect immediately.</summary>
         public bool ChooseReward(int index)
         {
             if (Phase != Phase.Reward || index < 0 || index >= _pendingRewards.Count) return false;
@@ -156,14 +152,14 @@ namespace AutoBattler.Core
             return true;
         }
 
-        /// <summary>Grants a reward outside the reward phase (tests and tooling).</summary>
+        // for tests
         internal void GrantForTests(RewardOption reward)
         {
             if (reward.Kind == RewardKind.Item) _inventory.Add(reward.Item);
             else _augments.Add(reward.Augment);
         }
 
-        /// <summary>Equips an inventory item on a unit; an item the unit already held goes back to the inventory.</summary>
+        // swaps out whatever the unit was holding
         public bool TryEquip(int inventoryIndex, Slot slot)
         {
             if (Phase != Phase.Shop || inventoryIndex < 0 || inventoryIndex >= _inventory.Count) return false;
@@ -224,7 +220,6 @@ namespace AutoBattler.Core
             if (IsMaxLevel) Xp = 0;
         }
 
-        /// <summary>The income the player would receive for finishing a round with the given streak.</summary>
         public static int Income(int gold, int streak, out int interest, out int streakBonus)
         {
             interest = Balance.Interest(gold);
@@ -255,7 +250,7 @@ namespace AutoBattler.Core
             }
             else
             {
-                // Bench is full but this purchase completes a set of three: merge straight away.
+                // bench is full but this is the 3rd copy, so merge right away
                 MergeInto(def, 1, extra: bought);
                 ResolveMerges(def);
             }
@@ -273,7 +268,7 @@ namespace AutoBattler.Core
             return true;
         }
 
-        /// <summary>Moves a unit to another slot, swapping if the destination is occupied.</summary>
+        // swaps if something's already there
         public bool TryMove(Slot from, Slot to)
         {
             if (Phase != Phase.Shop || from.Equals(to)) return false;
@@ -289,7 +284,7 @@ namespace AutoBattler.Core
             return true;
         }
 
-        /// <summary>Builds the battle for this round. Returns null if the player has no units on the board.</summary>
+        // null if the board is empty
         public BattleSimulator StartBattle()
         {
             if (Phase != Phase.Shop || BoardCount == 0) return null;
@@ -321,7 +316,6 @@ namespace AutoBattler.Core
             return new BattleSimulator(combatants);
         }
 
-        /// <summary>Applies the battle outcome and advances to the next round (or ends the run).</summary>
         public RoundResult CompleteBattle(BattleSimulator battle)
         {
             if (Phase != Phase.Battle) throw new InvalidOperationException("No battle in progress.");
@@ -330,7 +324,7 @@ namespace AutoBattler.Core
             bool won = battle.Winner == Team.Player;
             int damage = won ? 0 : BaseLossDamage + battle.AliveCount(Team.Enemy);
             Health = Math.Max(0, Health - damage);
-            // Draws count as losses.
+            // draws count as a loss
             Streak = won ? Math.Max(Streak, 0) + 1 : Math.Min(Streak, 0) - 1;
 
             if (Health == 0)
@@ -340,7 +334,7 @@ namespace AutoBattler.Core
             }
             if (Round == FinalRound)
             {
-                // The final round is a boss fight: beat it to win the run.
+                // round 10 is the final boss, lose it and the run's over
                 Phase = won ? Phase.Victory : Phase.Defeat;
                 return new RoundResult(won, damage, 0, 0, 0);
             }
@@ -383,10 +377,8 @@ namespace AutoBattler.Core
                 if (CountCopies(def, stars) >= 3) MergeInto(def, stars, extra: null);
         }
 
-        /// <summary>
-        /// Replaces three copies (two if <paramref name="extra"/> supplies the third) with one upgraded unit.
-        /// Board copies are consumed first so the upgraded unit stays deployed.
-        /// </summary>
+        // 3 copies -> 1 upgraded unit (or 2 if extra is the 3rd). uses board copies first
+        // so the upgraded one stays on the board
         private void MergeInto(UnitDefinition def, int stars, OwnedUnit extra)
         {
             int needed = extra == null ? 3 : 2;
@@ -403,7 +395,7 @@ namespace AutoBattler.Core
                 needed--;
             }
 
-            // The upgraded unit keeps the first item; any others return to the inventory.
+            // keep the first item, the rest go back to the inventory
             var merged = new OwnedUnit(def, stars + 1);
             if (items.Count > 0)
             {

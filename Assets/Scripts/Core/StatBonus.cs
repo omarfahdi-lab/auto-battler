@@ -3,15 +3,15 @@ using System.Collections.Generic;
 
 namespace AutoBattler.Core
 {
-    /// <summary>Percentage stat modifiers. Bonuses from synergies, items, augments and bosses add together.</summary>
+    // % bonuses. synergy + item + augment + boss all just add up
     public readonly struct StatBonus
     {
         public readonly int HpPct;
         public readonly int PowerPct;
         public readonly int AttackSpeedPct;
-        /// <summary>Percent of incoming damage ignored.</summary>
+        // % of damage blocked
         public readonly int ArmorPct;
-        /// <summary>Extra healing; only affects healers.</summary>
+        // only does anything for healers
         public readonly int HealPct;
 
         public StatBonus(int hpPct = 0, int powerPct = 0, int attackSpeedPct = 0, int armorPct = 0, int healPct = 0)
@@ -29,7 +29,6 @@ namespace AutoBattler.Core
 
         public bool IsEmpty => HpPct == 0 && PowerPct == 0 && AttackSpeedPct == 0 && ArmorPct == 0 && HealPct == 0;
 
-        /// <summary>Short human-readable summary, e.g. "+20% HP, +10% attack speed".</summary>
         public string Describe()
         {
             var parts = new List<string>();
@@ -42,7 +41,6 @@ namespace AutoBattler.Core
         }
     }
 
-    /// <summary>A unit's battle stats after all bonuses.</summary>
     public readonly struct CombatStats
     {
         public const int MaxArmorPct = 75;
@@ -67,7 +65,7 @@ namespace AutoBattler.Core
             int hp = Scale(unit.MaxHp, bonus.HpPct);
             int power = Scale(unit.Power, powerPct);
             int armor = Math.Max(0, Math.Min(bonus.ArmorPct, MaxArmorPct));
-            // Faster attacks shorten the cooldown, but never below the length of the animation.
+            // attack speed can't make it faster than the attack animation
             int cooldown = (int)Math.Round(def.ActionCooldown * 100.0 / (100 + Math.Max(0, bonus.AttackSpeedPct)));
             return new CombatStats(hp, power, armor, Math.Max(def.ActionFrames, cooldown));
         }

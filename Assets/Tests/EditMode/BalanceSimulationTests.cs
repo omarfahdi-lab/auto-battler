@@ -21,7 +21,7 @@ namespace AutoBattler.Tests
             Assert.That(report.Victories, Is.EqualTo(report.Rounds[Balance.FinalRound].Wins));
         }
 
-        /// <summary>Guards the tuning: the README target is ~55% over 1,000 runs, so a smaller sample must stay close.</summary>
+        // catches balance regressions. target is ~55% over 1000 runs, 300 should land close
         [Test]
         public void TunedBalance_KeepsTheBotNearTheTargetWinRate()
         {

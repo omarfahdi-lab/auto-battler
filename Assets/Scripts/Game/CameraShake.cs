@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace AutoBattler.Game
 {
-    /// <summary>Decaying random camera offset for impactful moments; the camera always returns to its rest position.</summary>
+    // small screen shake that fades out and puts the camera back where it was
     public sealed class CameraShake : MonoBehaviour
     {
         private Vector3 _rest;
@@ -16,7 +16,7 @@ namespace AutoBattler.Game
             transform.position = position;
         }
 
-        /// <summary>Starts a shake unless a stronger one is already running.</summary>
+        // a weak shake won't cut off a stronger one
         public void Shake(float strength, float duration)
         {
             float current = _remaining > 0f ? _strength * (_remaining / _duration) : 0f;
@@ -29,7 +29,7 @@ namespace AutoBattler.Game
         private void LateUpdate()
         {
             if (_remaining <= 0f) return;
-            // Unscaled so a shake feels the same at 1x and 2x battle speed.
+            // unscaled so it's the same at 2x speed
             _remaining -= Time.unscaledDeltaTime;
             if (_remaining <= 0f)
             {

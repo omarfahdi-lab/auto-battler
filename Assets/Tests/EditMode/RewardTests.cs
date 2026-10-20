@@ -67,9 +67,9 @@ namespace AutoBattler.Tests
             Assert.That(Enumerable.Range(0, 20).Select(Names).Distinct().Count(), Is.GreaterThan(5));
         }
 
-        // ---- Session integration ------------------------------------------------------------------------------
+        // session tests
 
-        /// <summary>A session with two 3-star Lancers on the board, strong enough to win the first five rounds.</summary>
+        // two 3* lancers, enough to win the first 5 rounds
         private static GameSession StrongSession()
         {
             var s = new GameSession(new SeededRandom(9)) { Gold = 200 };
@@ -105,7 +105,7 @@ namespace AutoBattler.Tests
         public void ChoosingRewards_FillsInventoryOrAugments()
         {
             var s = StrongSession();
-            TestRuns.PlayRound(s, rewardChoice: 0); // just to get into a reward phase on the next win
+            TestRuns.PlayRound(s, rewardChoice: 0); // win once first
             var battle = s.StartBattle();
             battle.RunToEnd();
             s.CompleteBattle(battle);

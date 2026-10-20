@@ -4,37 +4,32 @@ namespace AutoBattler.Core
 {
     public enum UnitRole
     {
-        /// <summary>Attacks the nearest enemy.</summary>
         Fighter,
-        /// <summary>Heals the most injured ally (lowest HP fraction) and never attacks.</summary>
+        // heals the lowest hp % ally, never attacks
         Healer,
     }
 
-    /// <summary>
-    /// Static data for a unit type. All timings are in battle ticks (<see cref="BattleSimulator.TicksPerSecond"/>),
-    /// which match the 10 fps animations one-to-one, so <see cref="ImpactTicks"/> is the attack sheet's impact frame.
-    /// </summary>
+    // timings are in ticks. 1 tick = 1 animation frame (10fps), so ImpactTicks is literally
+    // the frame in the attack sheet where the hit happens
     public sealed class UnitDefinition
     {
         public string Id { get; }
         public string Name { get; }
         public int Cost { get; }
         public int MaxHp { get; }
-        /// <summary>Damage per hit, or HP restored per heal for healers.</summary>
+        // damage, or heal amount for healers
         public int Power { get; }
         public int Range { get; }
         public UnitRole Role { get; }
-        /// <summary>Ticks between the start of one action and the start of the next.</summary>
+        // ticks between attacks
         public int ActionCooldown { get; }
-        /// <summary>Ticks from the start of an action until it takes effect (or the projectile is released).</summary>
+        // ticks until the hit lands (or the arrow is fired)
         public int ImpactTicks { get; }
-        /// <summary>Length of the action animation in ticks; attack speed can't push the cooldown below this.</summary>
+        // attack anim length, cooldown can't go below this
         public int ActionFrames { get; }
-        /// <summary>Whether the action launches a projectile that must travel to the target.</summary>
         public bool UsesProjectile { get; }
-        /// <summary>Ticks spent moving one cell.</summary>
         public int MoveTicks { get; }
-        /// <summary>RGB accent colour for UI, e.g. 0x4A90E2.</summary>
+        // UI accent color
         public int Color { get; }
 
         public UnitDefinition(string id, string name, int cost, int maxHp, int power, int range, UnitRole role,

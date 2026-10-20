@@ -4,15 +4,12 @@ using System.Linq;
 
 namespace AutoBattler.Core
 {
-    /// <summary>
-    /// A simple, deterministic player used by the balance simulation. Each shop phase it equips items, completes
-    /// merges, levels when it has spare gold, buys the best-value units it can afford above an interest reserve,
-    /// and fields its strongest units (melee in front, ranged behind, healers between).
-    /// </summary>
+    // simple deterministic bot for the balance sim. each shop it equips items, finishes merges,
+    // levels when the board is full, buys whatever looks best and fields its strongest units
     public sealed class GreedyBot
     {
-        /// <summary>Gold kept banked for interest from <see cref="ReserveFromRound"/> on. Spending everything is the
-        /// strongest simple policy over a 10-round run (see the README), so the default keeps nothing back.</summary>
+        // gold to hold for interest. spending everything actually wins more over 10 rounds
+        // (see README) so this is 0 by default
         public int Reserve { get; set; }
         public int ReserveFromRound { get; set; } = 3;
         public int XpFromRound { get; set; } = 3;
@@ -58,7 +55,7 @@ namespace AutoBattler.Core
         {
             int roundsLeft = Balance.FinalRound - s.Round + 1;
             if (option.Kind == RewardKind.Item)
-                return TotalPct(option.Item.Bonus) * 1.6; // lands on the strongest unit
+                return TotalPct(option.Item.Bonus) * 1.6; // goes on the best unit
             var augment = option.Augment;
             int units = Math.Max(3, s.BoardCapacity);
             return TotalPct(augment.TeamBonus) * units * 0.5 + augment.GoldPerRound * roundsLeft * 1.5;
@@ -66,7 +63,7 @@ namespace AutoBattler.Core
 
         private static int TotalPct(StatBonus b) => b.HpPct + b.PowerPct + b.AttackSpeedPct + b.ArmorPct + b.HealPct;
 
-        // ---- Buying ------------------------------------------------------------------------------------------
+        // buying
 
         private static void BuyMerges(GameSession s)
         {
@@ -80,7 +77,7 @@ namespace AutoBattler.Core
         private void LevelUp(GameSession s, int reserve)
         {
             if (s.Round < XpFromRound) return;
-            // Level when the board is already full, so the extra slot gets used.
+            // only level when the board's full so the new slot actually gets used
             while (s.CanBuyXp && s.BoardCount >= s.BoardCapacity && s.Gold - Balance.XpCost >= reserve)
                 s.TryBuyXp();
         }
@@ -109,21 +106,21 @@ namespace AutoBattler.Core
             }
         }
 
-        /// <summary>How much buying this unit helps: pairs and synergies first, then raw cost.</summary>
+        // pairs and synergies first, then just cost
         private static double BuyValue(GameSession s, UnitDefinition def)
         {
             int copies = CopiesOf(s, def, 1);
             int ofClass = s.OccupiedSlots().Count(slot => s.Get(slot).Definition == def);
             bool roomOnBoard = Units(s).Count() < s.BoardCapacity;
             double value = def.Cost;
-            if (copies == 1) value += 2;               // a pair on the way to a merge
-            if (ofClass == 1 || ofClass == 3) value += 1.5; // reaches a synergy threshold
+            if (copies == 1) value += 2;               // pair -> close to a merge
+            if (ofClass == 1 || ofClass == 3) value += 1.5; // hits a synergy breakpoint
             if (roomOnBoard) value += 2;
-            else if (copies == 0) value -= 2.5;        // bench filler with no merge prospects
+            else if (copies == 0) value -= 2.5;        // would just sit on the bench
             return value;
         }
 
-        /// <summary>Sells the weakest bench unit if it is worth less than the purchase.</summary>
+        // sell the worst bench unit if the new one's better
         private static bool MakeBenchRoom(GameSession s, double incomingValue)
         {
             Slot? weakest = null;
@@ -142,7 +139,7 @@ namespace AutoBattler.Core
             return weakest.HasValue && weakestScore < incomingValue && s.TrySell(weakest.Value);
         }
 
-        // ---- Board -------------------------------------------------------------------------------------------
+        // board
 
         private static void Arrange(GameSession s)
         {
@@ -150,7 +147,7 @@ namespace AutoBattler.Core
                 .OrderByDescending(x => Strength(x.unit)).ThenBy(x => x.unit.Definition.Id).ToList();
             var wanted = new HashSet<OwnedUnit>(ranked.Take(s.BoardCapacity).Select(x => x.unit));
 
-            // Bench the units that didn't make the cut, then fill the board by role.
+            // bench whoever didn't make the cut, then fill the board
             foreach (var (slot, unit) in ranked)
             {
                 if (slot.Area != SlotArea.Board || wanted.Contains(unit)) continue;
@@ -162,7 +159,7 @@ namespace AutoBattler.Core
                 if (!wanted.Contains(unit)) continue;
                 var from = Find(s, unit);
                 if (from.Area == SlotArea.Board) continue;
-                // No free cell means the bench was full; swap with a board unit that didn't make the cut.
+                // no free cell (bench was full) so swap with someone who didn't make the cut
                 var cell = PreferredCell(s, unit) ?? UnwantedBoardSlot(s, wanted);
                 if (cell.HasValue) s.TryMove(from, cell.Value);
             }
@@ -197,8 +194,6 @@ namespace AutoBattler.Core
                 if (!target.HasValue || !s.TryEquip(0, target.Value)) return;
             }
         }
-
-        // ---- Helpers -----------------------------------------------------------------------------------------
 
         private static int Strength(OwnedUnit unit) => EnemyWaves.PowerOf(unit) * 2 + (unit.Item != null ? 2 : 0);
 

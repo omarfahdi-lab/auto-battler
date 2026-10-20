@@ -5,7 +5,6 @@ using UnityEngine.InputSystem;
 
 namespace AutoBattler.Game
 {
-    /// <summary>Drives a GameSession: draws the board, handles input, and plays battles back tick by tick.</summary>
     public sealed class GameController : MonoBehaviour
     {
         private const float TickSeconds = 1f / BattleSimulator.TicksPerSecond;
@@ -25,7 +24,7 @@ namespace AutoBattler.Game
         private CameraShake _shake;
         private PlayerSettings _settings;
 
-        // "Watch the AI play": the balance-sim bot drives the real game on a timer.
+        // "watch the AI play" - same bot as the balance sim, just playing on a timer
         private const float AutoStepSeconds = 0.9f;
         private const float AutoRestartSeconds = 4f;
         private readonly GreedyBot _bot = new GreedyBot();
@@ -54,7 +53,7 @@ namespace AutoBattler.Game
             _camera = camera;
             _audio = audio;
             _seed = seed;
-            // Frame the 8x6 board plus bench; side panels fit in the remaining width.
+            // fits the 8x6 board + bench, side panels go in the leftover width
             _camera.orthographicSize = 5.2f;
             _shake = _camera.gameObject.AddComponent<CameraShake>();
             _shake.SetRestPosition(new Vector3(0f, 1.0f, -10f));
@@ -65,7 +64,7 @@ namespace AutoBattler.Game
             _unitRoot.SetParent(transform, false);
 
             _hud = new Hud(transform);
-            // While the bot is playing, the shop and battle controls don't respond to the player.
+            // ignore the shop buttons while the bot is playing
             _hud.BuyClicked += i => { if (!_autoplay) Buy(i); };
             _hud.RerollClicked += () => { if (!_autoplay) Reroll(); };
             _hud.SellClicked += () => { if (!_autoplay) SellSelected(); };
@@ -104,8 +103,6 @@ namespace AutoBattler.Game
             RefreshShopPhase();
         }
 
-        // ---- Layout -------------------------------------------------------------------------------------------
-
         private static Vector3 CellToWorld(GridPos p) =>
             new Vector3(p.X - (BoardLayout.Width - 1) / 2f, p.Y + 0.4f, 0f);
 
@@ -131,7 +128,7 @@ namespace AutoBattler.Game
             var tiles = new GameObject("Terrain").transform;
             tiles.SetParent(transform, false);
 
-            // The board is one grass island built from the tileset's 3x3 flat-ground pieces.
+            // board is one grass island from the 3x3 tiles
             for (int y = 0; y < BoardLayout.Height; y++)
             for (int x = 0; x < BoardLayout.Width; x++)
             {
@@ -140,7 +137,7 @@ namespace AutoBattler.Game
                 Tile(tiles, $"Cell {x},{y}", Art.GrassTile(col, row), CellToWorld(new GridPos(x, y)));
             }
 
-            // Tint each half by team and draw faint cell lines so the grid reads on top of the grass.
+            // tint each half + faint grid lines, otherwise you can't see the cells on the grass
             float halfHeight = BoardLayout.Height / 2f;
             var boardCenter = (CellToWorld(new GridPos(0, 0)) + CellToWorld(new GridPos(BoardLayout.Width - 1, BoardLayout.Height - 1))) / 2f;
             SpriteFactory.CreateChild(tiles, "PlayerTint", SpriteFactory.Square, PlayerTint, 1,
@@ -156,7 +153,6 @@ namespace AutoBattler.Game
                     new Vector3(boardCenter.x, boardCenter.y + y - BoardLayout.Height / 2f, 0f),
                     new Vector2(BoardLayout.Width - 0.4f, y == BoardLayout.PlayerRows ? 0.06f : 0.03f));
 
-            // The bench is a one-tile-high grass strip below the board.
             for (int i = 0; i < GameSession.BenchSize; i++)
             {
                 int piece = i == 0 ? 0 : i == GameSession.BenchSize - 1 ? 2 : 1;
@@ -178,7 +174,7 @@ namespace AutoBattler.Game
             SpriteFactory.AddRenderer(go, sprite, Color.white, 0);
         }
 
-        // ---- Shop phase ---------------------------------------------------------------------------------------
+        // shop
 
         private void Buy(int shopSlot)
         {
@@ -308,7 +304,7 @@ namespace AutoBattler.Game
             _hud.Refresh(_session, _selected.HasValue ? _session.Get(_selected.Value) : null, _selectedItem);
         }
 
-        // ---- Battle phase -------------------------------------------------------------------------------------
+        // battle
 
         private void StartBattle()
         {
@@ -324,7 +320,7 @@ namespace AutoBattler.Game
 
             _selected = null;
             _selectedItem = -1;
-            RefreshShopPhase(); // clears shop-phase views since the phase is now Battle
+            RefreshShopPhase(); // phase is Battle now so this clears the shop views
             foreach (var c in _battle.Combatants)
             {
                 var view = UnitView.Create(_unitRoot, c.Unit, c.Team, CellToWorld(c.Position), c.IsBoss);
@@ -463,7 +459,7 @@ namespace AutoBattler.Game
             }
         }
 
-        // ---- Menu and AI demo -----------------------------------------------------------------------------------
+        // menu + AI demo
 
         private void PlayOrContinue()
         {
@@ -495,10 +491,10 @@ namespace AutoBattler.Game
             UpdateTimeScale();
         }
 
-        /// <summary>Paused while the menu is open; battle speed applies only while a battle plays out.</summary>
+        // paused while the menu's open. speed only applies in battles, and since everything
+        // in a battle uses scaled time the impact frames still line up at 2x
         private void UpdateTimeScale()
         {
-            // Everything in a battle runs on scaled time, so impact frames still line up with the simulation at 2x.
             Time.timeScale = _hud.Menu.IsVisible ? 0f : _battle != null ? _settings.BattleSpeed : 1f;
         }
 
@@ -526,7 +522,7 @@ namespace AutoBattler.Game
                     break;
                 case Phase.Victory:
                 case Phase.Defeat:
-                    // Let the result sink in, then start another demo run.
+                    // wait a bit on the result screen, then start another demo run
                     if (_autoRestartPending) StartRun(autoplay: true);
                     else
                     {
@@ -537,7 +533,7 @@ namespace AutoBattler.Game
             }
         }
 
-        // ---- Settings ------------------------------------------------------------------------------------------
+        // settings
 
         private void CycleVolume()
         {
@@ -574,7 +570,7 @@ namespace AutoBattler.Game
             UpdateTimeScale();
         }
 
-        // ---- Input --------------------------------------------------------------------------------------------
+        // input
 
         private void Update()
         {
@@ -610,7 +606,7 @@ namespace AutoBattler.Game
                 OpenMenu();
                 return;
             }
-            if (_autoplay) return; // the bot is playing; only settings and the menu respond
+            if (_autoplay) return; // bot's playing, only settings/menu keys work
 
             if (_session.Phase == Phase.Reward)
             {

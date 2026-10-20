@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace AutoBattler.Game
 {
-    /// <summary>Generates small white helper sprites (overlays, star pips); tint them with SpriteRenderer.color.</summary>
+    // white squares/diamonds for overlays and star pips, tint with SpriteRenderer.color
     public static class SpriteFactory
     {
         private const int Size = 64;

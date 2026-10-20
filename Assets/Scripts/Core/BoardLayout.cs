@@ -1,6 +1,6 @@
 namespace AutoBattler.Core
 {
-    /// <summary>Fixed dimensions of the battle grid. The player owns the bottom rows, the enemy the top rows.</summary>
+    // player gets the bottom 3 rows, enemy the top 3
     public static class BoardLayout
     {
         public const int Width = 8;

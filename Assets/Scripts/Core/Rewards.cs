@@ -9,7 +9,7 @@ namespace AutoBattler.Core
         AttackSpeed,
     }
 
-    /// <summary>Equipment for a single unit. Each unit holds one item.</summary>
+    // one item per unit
     public sealed class ItemDefinition
     {
         public string Id { get; }
@@ -31,7 +31,7 @@ namespace AutoBattler.Core
         public override string ToString() => Name;
     }
 
-    /// <summary>A permanent team-wide bonus for the rest of the run.</summary>
+    // lasts the rest of the run
     public sealed class AugmentDefinition
     {
         public string Id { get; }
@@ -84,7 +84,7 @@ namespace AutoBattler.Core
         public override string ToString() => Name;
     }
 
-    /// <summary>The pick-one-of-three offered after every won round. Boss wins offer greater versions.</summary>
+    // pick 1 of 3 after every win, boss wins give the greater versions
     public static class Rewards
     {
         public const int ChoiceCount = 3;
@@ -94,7 +94,7 @@ namespace AutoBattler.Core
         public static IReadOnlyList<AugmentDefinition> Augments => Balance.Augments;
         public static IReadOnlyList<AugmentDefinition> GreaterAugments => Balance.GreaterAugments;
 
-        /// <summary>Three distinct options: at least one item and at least one augment, in random order.</summary>
+        // always at least 1 item and 1 augment
         public static IReadOnlyList<RewardOption> Generate(IRandom rng, bool bossWin)
         {
             var items = new List<ItemDefinition>(bossWin ? GreaterItems : Items);
@@ -111,7 +111,7 @@ namespace AutoBattler.Core
                 remaining--;
             }
 
-            // Fisher-Yates so the guaranteed item isn't always first.
+            // shuffle so the item isn't always first
             for (int i = options.Count - 1; i > 0; i--)
             {
                 int j = rng.Next(i + 1);

@@ -51,7 +51,7 @@ namespace AutoBattler.Tests
             for (int round = 0; round < 3 && s.Phase == Phase.Shop; round++)
             {
                 int goldBefore = s.Gold;
-                int augmentGold = s.AugmentGoldPerRound; // a reward picked after this round pays from the next one
+                int augmentGold = s.AugmentGoldPerRound; // augment picked this round only pays next round
                 var result = TestRuns.PlayRound(s);
                 if (s.Phase != Phase.Shop) break;
 

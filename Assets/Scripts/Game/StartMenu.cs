@@ -5,10 +5,7 @@ using UnityEngine.UIElements;
 
 namespace AutoBattler.Game
 {
-    /// <summary>
-    /// Start and pause menu: play or continue, watch the balance bot play, how to play, settings and credits.
-    /// Built from the same Tiny Swords pieces as the HUD.
-    /// </summary>
+    // start / pause menu
     public sealed class StartMenu
     {
         private enum Page
@@ -66,7 +63,7 @@ namespace AutoBattler.Game
                 "Buy XP to field more units and find 3g units more often. Gold pays interest, but spending usually wins.",
             })
             {
-                // The built-in runtime font has no bullet glyph, so use a dash.
+                // the built-in font has no bullet character
                 Hud.Text(_howTo, 14, Hud.LightText, "-  " + line).style.marginBottom = 4;
             }
             var keys = Hud.Text(_howTo, 12, Hud.DimText,
@@ -102,7 +99,7 @@ namespace AutoBattler.Game
         public bool IsVisible => _overlay.style.display == DisplayStyle.Flex;
         public bool IsOnMainPage => _page == Page.Main;
 
-        /// <summary>Opens the menu on its main page. Mid-run it offers Continue and New Run instead of Play.</summary>
+        // mid-run it shows Continue + New Run instead of Play
         public void Open(bool runInProgress)
         {
             _play.text = runInProgress ? "CONTINUE" : "PLAY";
@@ -114,7 +111,6 @@ namespace AutoBattler.Game
 
         public void Close() => _overlay.style.display = DisplayStyle.None;
 
-        /// <summary>Returns to the main page from a sub-page.</summary>
         public void Back() => Show(Page.Main);
 
         public void ShowSettings(PlayerSettings settings)

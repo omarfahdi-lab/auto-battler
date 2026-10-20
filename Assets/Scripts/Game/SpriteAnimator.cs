@@ -4,10 +4,7 @@ using UnityEngine;
 
 namespace AutoBattler.Game
 {
-    /// <summary>
-    /// Plays sprite strips at the battle tick rate (10 fps), so frame N of an action is on screen exactly when the
-    /// simulation resolves tick N of it.
-    /// </summary>
+    // plays strips at 10fps (same as the sim tick rate) so frame N shows up on tick N
     public sealed class SpriteAnimator : MonoBehaviour
     {
         public const float FrameSeconds = 1f / BattleSimulator.TicksPerSecond;
@@ -24,7 +21,7 @@ namespace AutoBattler.Game
 
         public void Init(SpriteRenderer target) => _renderer = target;
 
-        /// <summary>Starts a strip from frame 0. Looping strips that are already playing are left alone.</summary>
+        // restarts from frame 0, unless it's the same loop that's already playing
         public void Play(SpriteStrip strip, bool loop, Action onComplete = null)
         {
             if (loop && _loop && strip == _strip) return;
@@ -56,7 +53,7 @@ namespace AutoBattler.Game
                     var done = _onComplete;
                     _onComplete = null;
                     _strip = null;
-                    done?.Invoke(); // usually starts the next strip
+                    done?.Invoke(); // usually plays the next strip
                     return;
                 }
                 _renderer.sprite = _strip.Frames[_frame];

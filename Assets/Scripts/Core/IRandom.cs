@@ -2,18 +2,18 @@ namespace AutoBattler.Core
 {
     public interface IRandom
     {
-        /// <summary>Returns an integer in [0, maxExclusive).</summary>
+        // [0, maxExclusive)
         int Next(int maxExclusive);
     }
 
-    /// <summary>Deterministic xorshift64* generator so runs are reproducible across platforms.</summary>
+    // xorshift64* so a seed replays the same everywhere (System.Random isn't guaranteed to)
     public sealed class SeededRandom : IRandom
     {
         private ulong _state;
 
         public SeededRandom(int seed)
         {
-            // SplitMix64 scramble so nearby seeds produce unrelated sequences; state must be non-zero.
+            // splitmix so seeds 1,2,3 don't give similar sequences. state can't be 0
             ulong z = (ulong)(uint)seed + 0x9E3779B97F4A7C15UL;
             z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
             z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;

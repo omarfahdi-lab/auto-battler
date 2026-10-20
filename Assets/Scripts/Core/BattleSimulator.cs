@@ -4,15 +4,11 @@ using System.Linq;
 
 namespace AutoBattler.Core
 {
-    /// <summary>
-    /// Deterministic tick-based battle. Each tick, every living combatant (in Id order) either continues the action it
-    /// is winding up, starts a new one if a target is in range and it is off cooldown, or steps one cell closer.
-    /// Actions take effect <see cref="UnitDefinition.ImpactTicks"/> after they start; projectiles then travel
-    /// <see cref="ProjectileTicksPerCell"/> ticks per cell before they hit.
-    /// </summary>
+    // tick based + deterministic. every tick each unit (in id order) either finishes its wind-up,
+    // starts an attack if something's in range, or moves a cell closer
     public sealed class BattleSimulator
     {
-        /// <summary>Simulation rate. Matches the 10 fps unit animations so one tick is one animation frame.</summary>
+        // 10 ticks/sec = the 10fps animations, so 1 tick = 1 frame
         public const int TicksPerSecond = 10;
         public const int MaxTicks = 120 * TicksPerSecond;
         public const int ProjectileTicksPerCell = 1;
@@ -38,7 +34,7 @@ namespace AutoBattler.Core
         public IReadOnlyList<Combatant> Combatants => _combatants;
         public int Tick { get; private set; }
         public bool IsOver { get; private set; }
-        /// <summary>Winning team, or null if the battle timed out.</summary>
+        // null = timed out
         public Team? Winner { get; private set; }
         public int ProjectilesInFlight => _projectiles.Count;
 
@@ -88,7 +84,6 @@ namespace AutoBattler.Core
             return events;
         }
 
-        /// <summary>Runs until the battle ends and returns the winner (null on timeout).</summary>
         public Team? RunToEnd()
         {
             while (!IsOver) Step();
@@ -126,7 +121,7 @@ namespace AutoBattler.Core
                 return;
             }
 
-            // Nobody needs healing: keep up with the front line, but stay out of melee.
+            // nobody's hurt, just follow the fight but stay at range
             var enemy = NearestEnemy(c);
             if (enemy != null && c.MoveCooldown == 0 && c.Position.DistanceTo(enemy.Position) > c.Range)
                 StepToward(c, enemy, events);
@@ -145,7 +140,7 @@ namespace AutoBattler.Core
         {
             var target = Find(c.PendingTargetId);
             c.PendingTargetId = -1;
-            // A target that died during the wind-up is simply missed.
+            // target died during the wind-up, whiff
             if (target == null || !target.IsAlive) return;
 
             if (c.Definition.Role == UnitRole.Healer)
@@ -181,7 +176,7 @@ namespace AutoBattler.Core
             }
         }
 
-        /// <summary>Damage after armor: at least 1, at most the target's remaining HP.</summary>
+        // always at least 1 dmg
         public static int Mitigate(int power, int armorPct) => Math.Max(1, power * (100 - armorPct) / 100);
 
         private void ApplyDamage(int sourceId, Combatant target, int power, List<BattleEvent> events)
@@ -215,14 +210,14 @@ namespace AutoBattler.Core
             return best;
         }
 
-        /// <summary>Damaged ally (including self) with the lowest HP fraction; ties go to the lower Id.</summary>
+        // lowest hp % ally (can be itself), ties -> lower id
         private Combatant MostInjuredAlly(Combatant self)
         {
             Combatant best = null;
             foreach (var other in _combatants)
             {
                 if (!other.IsAlive || other.Team != self.Team || other.Hp >= other.MaxHp) continue;
-                // Compare Hp/MaxHp without floating point.
+                // cross multiply instead of using floats
                 if (best == null || (long)other.Hp * best.MaxHp < (long)best.Hp * other.MaxHp) best = other;
             }
             return best;
@@ -251,7 +246,7 @@ namespace AutoBattler.Core
                 }
             }
 
-            // Only move when it actually closes the gap; blocked units wait for the path to clear.
+            // only move if it actually gets closer, otherwise wait for the path to open up
             if (!best.HasValue || bestDistance >= currentDistance) return;
 
             var to = best.Value;

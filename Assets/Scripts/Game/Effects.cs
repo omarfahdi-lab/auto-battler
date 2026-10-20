@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace AutoBattler.Game
 {
-    /// <summary>An arrow that homes in on a unit and lands after a fixed flight time.</summary>
+    // arrow that follows its target and lands after a fixed time
     public sealed class ArrowView : MonoBehaviour
     {
         private Transform _target;
@@ -47,7 +47,6 @@ namespace AutoBattler.Game
         }
     }
 
-    /// <summary>A one-shot sprite animation that removes itself when finished.</summary>
     public static class OneShotEffect
     {
         public static void Play(Transform parent, SpriteStrip strip, Vector3 position, int sortingOrder)

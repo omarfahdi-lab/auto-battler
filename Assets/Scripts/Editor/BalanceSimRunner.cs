@@ -5,7 +5,6 @@ using UnityEngine;
 
 namespace AutoBattler.Editor
 {
-    /// <summary>Runs the Core balance simulation from the editor menu or the command line.</summary>
     public static class BalanceSimRunner
     {
         private const int DefaultRuns = 1000;
@@ -17,10 +16,8 @@ namespace AutoBattler.Editor
             Debug.Log(report.ToMarkdown());
         }
 
-        /// <summary>
-        /// Unity -batchmode -quit -projectPath . -executeMethod AutoBattler.Editor.BalanceSimRunner.RunFromCommandLine
-        /// [-simRuns 1000] [-simSeed 1]
-        /// </summary>
+        // Unity -batchmode -quit -projectPath . -executeMethod AutoBattler.Editor.BalanceSimRunner.RunFromCommandLine
+        //   [-simRuns 1000] [-simSeed 1]
         public static void RunFromCommandLine()
         {
             int runs = IntArg("-simRuns", DefaultRuns);

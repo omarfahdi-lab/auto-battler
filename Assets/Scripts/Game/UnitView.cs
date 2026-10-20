@@ -5,10 +5,9 @@ using UnityEngine.Rendering;
 
 namespace AutoBattler.Game
 {
-    /// <summary>An animated Tiny Swords unit with a star row and HP bar.</summary>
     public sealed class UnitView : MonoBehaviour
     {
-        // Characters stand a little below the centre of their frames; lift them so their feet sit in the cell.
+        // characters sit low in their frames, nudge them up so the feet are in the cell
         private const float BodyOffsetY = 0.2f;
         private const float BarY = 0.95f;
         private const float BarWidth = 0.9f;
@@ -19,7 +18,7 @@ namespace AutoBattler.Game
         private static readonly Color EnemyHp = new Color(0.95f, 0.25f, 0.25f);
         private static readonly Color StarColor = new Color(1f, 0.85f, 0.2f);
         private static readonly Color StarOutline = new Color(0.25f, 0.15f, 0.05f);
-        // Hits flicker the sprite rather than tint it, so faction colours stay readable.
+        // flicker instead of a red tint, the red made blue units look like enemies
         private static readonly Color HitFlicker = new Color(1f, 1f, 1f, 0.35f);
 
         private UnitArt _art;
@@ -33,7 +32,6 @@ namespace AutoBattler.Game
         private float _hitTimer;
         private bool _dying;
 
-        /// <summary>Bosses are drawn larger so they read as the centrepiece of the wave.</summary>
         private const float BossScale = 1.35f;
 
         private float _baseScale = 1f;
@@ -60,7 +58,7 @@ namespace AutoBattler.Game
             bodyGo.transform.SetParent(transform, false);
             bodyGo.transform.localPosition = new Vector3(0f, BodyOffsetY, 0f);
             _body = bodyGo.AddComponent<SpriteRenderer>();
-            _body.flipX = team == Team.Enemy; // sheets face right; enemies start facing the player
+            _body.flipX = team == Team.Enemy; // sheets face right
             _animator = bodyGo.AddComponent<SpriteAnimator>();
             _animator.Init(_body);
             _animator.Play(_art.Idle, loop: true);
@@ -69,7 +67,7 @@ namespace AutoBattler.Game
             BuildStars(unit.Stars);
             if (unit.Item != null)
             {
-                // Item badge to the left of the HP bar.
+                // item icon left of the hp bar
                 SpriteFactory.CreateChild(transform, "Item", Art.IconSprite(Art.IconFor(unit.Item)), Color.white, 14,
                     new Vector3(-BarWidth / 2f - 0.12f, BarY, 0f), Vector2.one * 0.42f);
             }
@@ -120,7 +118,6 @@ namespace AutoBattler.Game
             UpdateSorting();
         }
 
-        /// <summary>Walks to a position over the given time, playing the run animation.</summary>
         public void MoveTo(Vector3 position, float seconds)
         {
             Face(position.x - transform.position.x);
@@ -129,7 +126,6 @@ namespace AutoBattler.Game
             if (!_animator.IsPlayingOneShot) _animator.Play(_art.Run, loop: true);
         }
 
-        /// <summary>Plays the attack/heal animation from frame 0, facing the target.</summary>
         public void PlayAction(Vector3 targetPosition)
         {
             var delta = targetPosition - transform.position;
@@ -140,7 +136,7 @@ namespace AutoBattler.Game
 
         private SpriteStrip DirectionalStrip(Vector3 delta)
         {
-            // Up, UpRight, Right, DownRight, Down; left-facing directions reuse these flipped.
+            // only right-facing sheets exist, left just flips them
             float angle = Mathf.Atan2(delta.y, Mathf.Abs(delta.x)) * Mathf.Rad2Deg;
             int index = angle > 67.5f ? 0 : angle > 22.5f ? 1 : angle > -22.5f ? 2 : angle > -67.5f ? 3 : 4;
             return _art.DirectionalActions[index];
@@ -170,11 +166,10 @@ namespace AutoBattler.Game
 
         private IEnumerator FadeOut()
         {
-            // Fall over: freeze on the current frame, tip backwards (away from the facing direction) while sinking,
-            // and fade out over the last part of the fall.
+            // freeze the frame, tip over backwards while sinking, fade out near the end
             const float duration = 0.55f;
             _animator.enabled = false;
-            _target = transform.position; // stop any walk in progress
+            _target = transform.position; // stop walking
             var body = _body.transform;
             var startPos = body.localPosition;
             float tipAngle = _body.flipX ? -85f : 85f;
@@ -200,7 +195,7 @@ namespace AutoBattler.Game
 
         private void UpdateSorting()
         {
-            // Lower on screen draws in front; offset keeps every unit above the terrain (order 0-2).
+            // lower on screen = in front. +1000 keeps units above the terrain
             _sorting.sortingOrder = 1000 - Mathf.RoundToInt(transform.position.y * 100f);
         }
 

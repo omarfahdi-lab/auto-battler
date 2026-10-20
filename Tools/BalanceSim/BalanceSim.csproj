@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Runs the Core balance simulation outside Unity. See the README for usage. -->
+  <!-- runs the balance sim outside Unity, see README -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <!-- Match the C# version Unity compiles Core with. -->
+    <!-- same C# version Unity uses -->
     <LangVersion>9.0</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>

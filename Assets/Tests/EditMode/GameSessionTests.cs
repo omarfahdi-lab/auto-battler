@@ -88,9 +88,9 @@ namespace AutoBattler.Tests
             s.Shop.Set(0, UnitCatalog.Warrior);
             s.TryBuy(0);
             s.TryMove(Slot.Bench(0), Slot.Board(new GridPos(0, 0)));
-            PlayRounds(s, 3); // earn enough gold to fill the bench
+            PlayRounds(s, 3); // need the gold
 
-            // Ends with bench: Archer x2, Lancer x2, Monk x2, Warrior 2*, Warrior (the board Warrior became 2*).
+            // bench ends up: 2 archer, 2 lancer, 2 monk, warrior 2*, warrior (board warrior merges to 2*)
             var buys = new[]
             {
                 UnitCatalog.Archer, UnitCatalog.Archer, UnitCatalog.Lancer, UnitCatalog.Lancer,
@@ -135,11 +135,11 @@ namespace AutoBattler.Tests
         {
             var s = NewSession();
             StockShop(s, UnitCatalog.Warrior);
-            for (int i = 0; i < 4; i++) s.TryBuy(i); // merges first three
+            for (int i = 0; i < 4; i++) s.TryBuy(i); // first 3 merge
             StockShop(s, UnitCatalog.Archer);
             s.TryBuy(0);
             StockShop(s, UnitCatalog.Lancer);
-            s.TryBuy(0); // 9 gold spent: Warrior 2*, Warrior, Archer, Lancer
+            s.TryBuy(0); // 9g: warrior 2*, warrior, archer, lancer
 
             int placed = 0;
             for (int i = 0; i < GameSession.BenchSize; i++)

@@ -2,14 +2,12 @@ using System.Collections.Generic;
 
 namespace AutoBattler.Core
 {
-    /// <summary>A class bonus that applies to every unit of that class when enough of them are on the board.</summary>
+    // class bonus at 2 / 4 of that class on the board
     public sealed class SynergyDefinition
     {
         public UnitDefinition Class { get; }
         public string Name { get; }
-        /// <summary>Units needed for each tier, ascending.</summary>
         public IReadOnlyList<int> Thresholds { get; }
-        /// <summary>Bonus at each tier (same length as <see cref="Thresholds"/>).</summary>
         public IReadOnlyList<StatBonus> Bonuses { get; }
 
         public SynergyDefinition(UnitDefinition unitClass, string name, int[] thresholds, StatBonus[] bonuses)
@@ -20,7 +18,7 @@ namespace AutoBattler.Core
             Bonuses = bonuses;
         }
 
-        /// <summary>0 when inactive, otherwise the highest tier reached (1-based).</summary>
+        // 0 = not active
         public int TierFor(int count)
         {
             int tier = 0;
@@ -61,7 +59,7 @@ namespace AutoBattler.Core
 
         public static readonly IReadOnlyList<SynergyDefinition> All = new[] { Warriors, Archers, Lancers, Monks };
 
-        /// <summary>Counts units per class (every copy on the board counts) and resolves each synergy's tier.</summary>
+        // every copy counts, duplicates too
         public static IReadOnlyList<ActiveSynergy> Evaluate(IEnumerable<OwnedUnit> board)
         {
             var counts = new Dictionary<UnitDefinition, int>();

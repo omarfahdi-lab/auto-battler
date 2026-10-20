@@ -4,7 +4,6 @@ using UnityEngine;
 
 namespace AutoBattler.Game
 {
-    /// <summary>A sprite sheet cut into equal square frames.</summary>
     public sealed class SpriteStrip
     {
         public readonly Sprite[] Frames;
@@ -12,7 +11,7 @@ namespace AutoBattler.Game
         public int Length => Frames.Length;
     }
 
-    /// <summary>A texture rebuilt from a sheet of separated 9-slice (or 3-slice) pieces, with its border sizes in pixels.</summary>
+    // 9-slice texture stitched together from the pack's separated pieces, borders in px
     public sealed class SlicedTexture
     {
         public Texture2D Texture;
@@ -23,19 +22,16 @@ namespace AutoBattler.Game
             SpriteMeshType.FullRect, new Vector4(Left, Bottom, Right, Top));
     }
 
-    /// <summary>Animations for one unit type in one faction colour.</summary>
     public sealed class UnitArt
     {
         public SpriteStrip Idle, Run, Action;
-        /// <summary>Lancer only: attack sheets by direction (Up, UpRight, Right, DownRight, Down).</summary>
+        // lancer only: up, upright, right, downright, down
         public SpriteStrip[] DirectionalActions;
         public Sprite Portrait;
     }
 
-    /// <summary>
-    /// Loads the Tiny Swords pack (Pixel Frog) from Resources and slices it at runtime. Unit sheets are horizontal
-    /// strips of square frames, so the frame size is the texture height.
-    /// </summary>
+    // loads the Tiny Swords art from Resources and slices it at runtime.
+    // unit sheets are horizontal strips of square frames, so frame size = texture height
     public static class Art
     {
         public const float PixelsPerUnit = 64f;
@@ -108,7 +104,7 @@ namespace AutoBattler.Game
         {
             string dir = UnitFolder(team, unit);
             var art = new UnitArt { Idle = Strip(dir + idle), Run = Strip(dir + run), Action = Strip(dir + action) };
-            // Shop portrait: the middle of the first idle frame, where the character stands.
+            // shop portrait = middle of the first idle frame
             var first = art.Idle.Frames[0];
             const int crop = 96;
             var r = first.rect;
@@ -128,11 +124,11 @@ namespace AutoBattler.Game
             return strip.Frames[0];
         }
 
-        // ---- Terrain -----------------------------------------------------------------------------------------
+        // terrain
 
         private const string Tileset = "Terrain/Tileset/Tilemap_color1";
 
-        /// <summary>Flat-grass 9-slice tile; col/row 0..2 from the top-left of the tileset.</summary>
+        // flat grass 3x3, col/row 0..2 from the top left of the tileset
         public static Sprite GrassTile(int col, int row)
         {
             if (_grassTiles == null)
@@ -145,7 +141,7 @@ namespace AutoBattler.Game
             return _grassTiles[col, row];
         }
 
-        /// <summary>One-tile-high grass strip: 0 = left end, 1 = middle, 2 = right end.</summary>
+        // 1-tile strip: 0 left end, 1 middle, 2 right end
         public static Sprite BenchTile(int index)
         {
             if (_benchTiles == null) _benchTiles = new[] { TileSprite(0, 3), TileSprite(1, 3), TileSprite(2, 3) };
@@ -165,13 +161,13 @@ namespace AutoBattler.Game
             return tex.GetPixel(tex.width / 2, tex.height / 2);
         }
 
-        // ---- UI ----------------------------------------------------------------------------------------------
+        // ui
 
         private const string Ui = "UI Elements/UI Elements/";
 
         public static Texture2D Icon(int number) => Texture($"{Ui}Icons/Icon_{number:00}");
 
-        // Pack icons: 03 coin, 04 meat (health), 05 sword, 06 shield, 07 green gem (speed).
+        // icons: 03 coin, 04 meat (hp), 05 sword, 06 shield, 07 green gem (speed)
         public static Texture2D IconFor(ItemDefinition item) => Icon(StatIcon(item.Bonus));
 
         public static Texture2D IconFor(AugmentDefinition augment) =>
@@ -185,7 +181,6 @@ namespace AutoBattler.Game
 
         private static readonly Dictionary<Texture2D, Sprite> IconSprites = new Dictionary<Texture2D, Sprite>();
 
-        /// <summary>World-space sprite for an icon (e.g. the item badge on a unit).</summary>
         public static Sprite IconSprite(Texture2D icon)
         {
             if (!IconSprites.TryGetValue(icon, out var sprite))
@@ -200,7 +195,7 @@ namespace AutoBattler.Game
             Stitch($"{Ui}Buttons/Big{(red ? "Red" : "Blue")}Button_{(pressed ? "Pressed" : "Regular")}");
         public static SlicedTexture BarBase() => Stitch(Ui + "Bars/SmallBar_Base");
 
-        /// <summary>BigRibbons rows from the top: 0 blue, 1 red, 2 yellow, 3 purple, 4 black.</summary>
+        // rows from the top: 0 blue, 1 red, 2 yellow, 3 purple, 4 black
         public static SlicedTexture Ribbon(int row)
         {
             var tex = Texture(Ui + "Ribbons/BigRibbons");
@@ -210,10 +205,8 @@ namespace AutoBattler.Game
 
         private static SlicedTexture Stitch(string path) => Stitch(path, null);
 
-        /// <summary>
-        /// The pack ships 9-slice UI as pieces separated by transparent gaps. Find the pieces by their opaque
-        /// column/row runs and pack them edge to edge so the result can be used with slice borders.
-        /// </summary>
+        // the pack's 9-slice UI comes as separate pieces with transparent gaps between them.
+        // find the pieces by their opaque rows/columns and pack them together so slicing works
         private static SlicedTexture Stitch(string path, RectInt? area)
         {
             string key = area.HasValue ? $"{path}#{area.Value}" : path;
@@ -276,7 +269,7 @@ namespace AutoBattler.Game
             return Sliced[key] = result;
         }
 
-        /// <summary>Runs of consecutive opaque lines as (start, length).</summary>
+        // (start, length) of each opaque run
         private static List<Vector2Int> OpaqueRuns(int from, int to, System.Func<int, bool> isOpaque)
         {
             var runs = new List<Vector2Int>();

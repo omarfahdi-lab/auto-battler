@@ -2,10 +2,10 @@ using System;
 
 namespace AutoBattler.Core
 {
-    /// <summary>Player preferences: master volume (with mute) and battle speed. Persisted as a short string.</summary>
+    // volume/mute + battle speed, saved to PlayerPrefs as a string
     public sealed class PlayerSettings
     {
-        /// <summary>Volume levels the volume button cycles through, in percent. The last one is mute.</summary>
+        // last one = muted
         public static readonly int[] VolumeSteps = { 100, 60, 30, 0 };
         public const int MaxBattleSpeed = 2;
 
@@ -14,7 +14,6 @@ namespace AutoBattler.Core
         public int VolumeStep { get; private set; }
         public int VolumePercent => VolumeSteps[VolumeStep];
         public bool IsMuted => VolumePercent == 0;
-        /// <summary>1 for normal speed, 2 for double speed.</summary>
         public int BattleSpeed { get; private set; } = 1;
 
         public void CycleVolume()
@@ -23,7 +22,6 @@ namespace AutoBattler.Core
             if (!IsMuted) _lastAudibleStep = VolumeStep;
         }
 
-        /// <summary>Mutes, or restores the last audible volume.</summary>
         public void ToggleMute()
         {
             if (IsMuted)
@@ -41,7 +39,7 @@ namespace AutoBattler.Core
 
         public string Serialize() => $"{VolumeStep},{_lastAudibleStep},{BattleSpeed}";
 
-        /// <summary>Restores saved settings; anything missing or invalid falls back to the defaults.</summary>
+        // bad or missing data -> defaults
         public static PlayerSettings Deserialize(string text)
         {
             var settings = new PlayerSettings();
@@ -59,7 +57,7 @@ namespace AutoBattler.Core
 
     public static class SoundVariation
     {
-        /// <summary>A playback pitch within +/- <paramref name="spreadPercent"/> of 1, so repeated sounds differ.</summary>
+        // random pitch +/- spread% so the same hit sound doesn't get repetitive
         public static float Pitch(IRandom rng, int spreadPercent)
         {
             if (spreadPercent <= 0) return 1f;

@@ -3,16 +3,15 @@ namespace AutoBattler.Core
     public enum BattleEventType
     {
         Move,
-        /// <summary>A unit begins an attack or heal; the effect follows after its ImpactTicks.</summary>
+        // attack/heal started, actually lands ImpactTicks later
         ActionStart,
-        /// <summary>A projectile leaves the source; it lands after <see cref="BattleEvent.Ticks"/> ticks.</summary>
+        // arrow fired, hits after Ticks ticks
         ProjectileLaunch,
         Damage,
         Heal,
         Death,
     }
 
-    /// <summary>Something that happened during a battle tick, for the presentation layer to animate.</summary>
     public readonly struct BattleEvent
     {
         public readonly BattleEventType Type;

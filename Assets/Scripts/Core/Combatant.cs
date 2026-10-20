@@ -6,7 +6,7 @@ namespace AutoBattler.Core
         Enemy,
     }
 
-    /// <summary>Battle-time copy of a unit. Damage taken in battle never affects the owned unit.</summary>
+    // copy of a unit for one fight so damage doesn't stick to the real unit
     public sealed class Combatant
     {
         public int Id { get; }
@@ -17,12 +17,11 @@ namespace AutoBattler.Core
         public int Cooldown { get; internal set; }
         public int MoveCooldown { get; internal set; }
 
-        /// <summary>Target of the action currently winding up, or -1.</summary>
+        // -1 when not winding up
         internal int PendingTargetId { get; set; } = -1;
         internal int PendingImpactTick { get; set; }
 
         public CombatStats Stats { get; }
-        /// <summary>Boss units are drawn larger; their stat bonus is already in <see cref="Stats"/>.</summary>
         public bool IsBoss { get; }
 
         public Combatant(int id, Team team, OwnedUnit unit, GridPos position)

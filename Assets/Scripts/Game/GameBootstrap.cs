@@ -5,7 +5,7 @@ using UnityEngine.Rendering.Universal;
 
 namespace AutoBattler.Game
 {
-    /// <summary>Builds the whole game from code after the first scene loads; no scene wiring required.</summary>
+    // builds the whole game in code after the scene loads, nothing set up in the editor
     public static class GameBootstrap
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]

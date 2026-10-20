@@ -17,11 +17,8 @@ namespace AutoBattler.Core
         }
     }
 
-    /// <summary>
-    /// Builds each round's enemy team from a power budget (<see cref="Balance.EnemyBudget"/>), so difficulty follows
-    /// a designed curve instead of shop luck. Power is measured like gold: cost x copies (3 per star level).
-    /// Boss rounds spend part of the budget on one big upgraded unit and the rest on support.
-    /// </summary>
+    // enemies are bought with a per-round power budget instead of rolling the shop,
+    // so the difficulty curve is something I control. boss rounds spend most of it on one big unit
     public static class EnemyWaves
     {
         public const int MaxEnemies = 8;
@@ -54,7 +51,7 @@ namespace AutoBattler.Core
                 remaining -= def.Cost;
             }
 
-            // Spend what's left upgrading random units, then on extra bodies if nothing can be upgraded.
+            // leftover -> random star upgrades, or extra units if nothing can upgrade
             while (remaining > 0)
             {
                 var upgradable = new List<int>();
@@ -101,7 +98,7 @@ namespace AutoBattler.Core
 
             if (boss != null)
             {
-                // The boss leads from the middle of the front line.
+                // boss goes front and center
                 var pos = new GridPos(BoardLayout.Width / 2, boss.Definition.Range <= 1 ? frontRow : backRow);
                 free.Remove(pos);
                 wave.Add(new EnemyPlacement(boss, pos, isBoss: true));
@@ -109,7 +106,7 @@ namespace AutoBattler.Core
 
             foreach (var unit in units)
             {
-                // Melee units stand in the front row; ranged units and healers in the back, when there is room.
+                // melee in front, ranged/healers in the back if there's room
                 int preferredRow = unit.Definition.Range <= 1 ? frontRow : backRow;
                 var options = free.FindAll(p => p.Y == preferredRow);
                 if (options.Count == 0) options = free;

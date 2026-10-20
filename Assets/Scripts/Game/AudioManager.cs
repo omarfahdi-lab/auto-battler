@@ -31,15 +31,12 @@ namespace AutoBattler.Game
         Defeat,
     }
 
-    /// <summary>
-    /// Plays Kenney sound effects and jingles loaded from Resources/Audio. Each effect has a few variants; combat
-    /// sounds also get a small random pitch shift so repeated hits don't sound identical.
-    /// </summary>
+    // sfx + jingles from Resources/Audio (Kenney). combat sounds get a few variants and random pitch
     public sealed class AudioManager : MonoBehaviour
     {
         private const int VoiceCount = 12;
         private const int CombatPitchSpread = 8; // percent
-        /// <summary>The same effect won't restart within this window, so simultaneous hits don't stack into a spike.</summary>
+        // don't replay the same sound within this window, a bunch of hits on one tick gets loud
         private const float RepeatGuardSeconds = 0.035f;
 
         private static readonly Dictionary<Sfx, string[]> SfxFiles = new Dictionary<Sfx, string[]>
@@ -61,7 +58,7 @@ namespace AutoBattler.Game
             { Sfx.Error, new[] { "error_004" } },
         };
 
-        // Pizzicato set from Music Jingles: 02 rises, 07 falls, 10 is a short upbeat lift, 03 is a tense trill.
+        // pizzicato jingles: 02 goes up, 07 goes down, 10 is short + upbeat, 03 is the tense trill
         private static readonly Dictionary<Jingle, string> JingleFiles = new Dictionary<Jingle, string>
         {
             { Jingle.RoundStart, "jingles_PIZZI10" },
@@ -117,11 +114,10 @@ namespace AutoBattler.Game
         {
             var source = gameObject.AddComponent<AudioSource>();
             source.playOnAwake = false;
-            source.spatialBlend = 0f; // 2D: the listener position doesn't matter
+            source.spatialBlend = 0f; // 2D
             return source;
         }
 
-        /// <summary>Plays a sound effect. Combat sounds get pitch variation.</summary>
         public void Play(Sfx sfx, float volume = 1f)
         {
             if (!_sfx.TryGetValue(sfx, out var clips) || clips.Length == 0) return;
@@ -143,7 +139,6 @@ namespace AutoBattler.Game
             _jingleSource.Play();
         }
 
-        /// <summary>Master volume for everything, as a percentage (0 mutes).</summary>
         public static void SetMasterVolume(int percent) => AudioListener.volume = Mathf.Clamp01(percent / 100f);
 
         private static bool IsCombat(Sfx sfx) => sfx <= Sfx.Death;

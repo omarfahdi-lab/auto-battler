@@ -2,7 +2,7 @@ using System;
 
 namespace AutoBattler.Core
 {
-    /// <summary>A cell on the battle grid. (0,0) is the player's bottom-left corner.</summary>
+    // (0,0) = bottom left of the player's side
     public readonly struct GridPos : IEquatable<GridPos>
     {
         public readonly int X;
@@ -14,7 +14,7 @@ namespace AutoBattler.Core
             Y = y;
         }
 
-        /// <summary>Chebyshev distance: diagonal neighbours are 1 step away.</summary>
+        // chebyshev, diagonals count as 1
         public int DistanceTo(GridPos other) => Math.Max(Math.Abs(X - other.X), Math.Abs(Y - other.Y));
 
         public int ManhattanTo(GridPos other) => Math.Abs(X - other.X) + Math.Abs(Y - other.Y);

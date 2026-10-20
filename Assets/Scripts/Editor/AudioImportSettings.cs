@@ -3,10 +3,7 @@ using UnityEngine;
 
 namespace AutoBattler.Editor
 {
-    /// <summary>
-    /// Keeps the Kenney audio small in builds: sound effects are mono, everything is compressed at medium quality,
-    /// and short clips decompress on load so they play without delay.
-    /// </summary>
+    // keeps the audio small: mono sfx, vorbis q0.5, decompress on load so short clips have no delay
     public sealed class AudioImportSettings : AssetPostprocessor
     {
         private const string Root = "Assets/Resources/Audio/";
