@@ -29,8 +29,8 @@ a second.
   are sliced, and the art pack's 9-slice UI pieces stitched, at runtime.
 - **Polish:** start/pause menu, an AI demo mode, sound with pitch variation, screen shake on boss hits, death
   animations and a 2x battle speed.
-- **CI:** a GameCI workflow runs the tests and builds WebGL on every push and pull request (it needs Unity license
-  secrets; see [CI](#ci)).
+- **CI:** GitHub Actions runs all 101 tests on plain .NET on every push and pull request, with no Unity license
+  needed. A GameCI WebGL build can be triggered by hand (see [CI](#ci)).
 
 **Tech:** Unity 6.6 · C# · URP 2D · UI Toolkit · Input System · NUnit · WebGL · GitHub Actions (GameCI)
 
@@ -145,6 +145,7 @@ Assets/
     EditMode/ AutoBattler.Tests.EditMode – NUnit tests against Core
 Tools/
   BalanceSim/ – console runner for the balance simulation (compiles the Core sources directly)
+  CoreTests/  – runs the EditMode tests on plain .NET, outside Unity (used by CI)
 ```
 
 - **Core** holds all the rules. `GameSession` runs the economy, the shop, bench and board slots, merging, and the
@@ -249,7 +250,13 @@ Open the project in **Unity 6000.6.5f1** and press Play in any scene; the bootst
 
 In the editor: **Window → General → Test Runner → EditMode → Run All**.
 
-From the command line (close the editor first):
+Without Unity (about 1 s, any .NET 8 SDK, including the one bundled with Unity):
+
+```sh
+dotnet test Tools/CoreTests
+```
+
+With Unity from the command line (close the editor first):
 
 ```sh
 /Applications/Unity/Hub/Editor/6000.6.5f1/Unity.app/Contents/MacOS/Unity \
@@ -266,6 +273,10 @@ A 960×600 embed matches the default canvas.
 
 ## CI
 
-`.github/workflows/ci.yml` uses [GameCI](https://game.ci) to run the EditMode tests and then build WebGL, uploading
-the build as an artifact. Before it can run, add these repository secrets: `UNITY_LICENSE` (the contents of your
-`.ulf` file), `UNITY_EMAIL`, and `UNITY_PASSWORD`. See GameCI's [activation guide](https://game.ci/docs/github/activation).
+`.github/workflows/ci.yml` runs the tests through `Tools/CoreTests` on every push and pull request. Core has no
+UnityEngine reference, so this needs no Unity install or license.
+
+The WebGL build job uses [GameCI](https://game.ci) and only runs when started by hand (**Actions → CI → Run
+workflow**). It needs a GameCI Docker image for this Unity version and these repository secrets: `UNITY_LICENSE`
+(the contents of your `.ulf` file), `UNITY_EMAIL`, and `UNITY_PASSWORD`. See GameCI's
+[activation guide](https://game.ci/docs/github/activation).

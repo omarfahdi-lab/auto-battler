@@ -17,35 +17,30 @@ env:
 
 jobs:
   test:
-    name: EditMode tests
+    name: Core tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
 
-      - uses: actions/cache@v4
+      - uses: actions/setup-dotnet@v4
         with:
-          path: Library
-          key: Library-test-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
-          restore-keys: Library-test-
+          dotnet-version: 8.0.x
 
-      - uses: game-ci/unity-test-runner@v4
-        id: tests
-        with:
-          testMode: editmode
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-          checkName: EditMode test results
+      # Core has no UnityEngine reference, so its tests run on plain .NET without a Unity license
+      - name: Run tests
+        run: dotnet test Tools/CoreTests -c Release --logger "trx;LogFileName=results.trx"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
-          path: ${{ steps.tests.outputs.artifactsPath }}
+          path: Tools/CoreTests/TestResults
 
   build-webgl:
     name: Build WebGL
     needs: test
+    # manual only: needs Unity license secrets and a GameCI image for this Unity version
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
