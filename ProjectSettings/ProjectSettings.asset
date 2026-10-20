@@ -13,7 +13,7 @@ PlayerSettings:
   useOnDemandResources: 0
   accelerometerFrequency: 60
   companyName: DefaultCompany
-  productName: auto-battler
+  productName: Pocket Legions
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.13725491, g: 0.12156863, b: 0.1254902, a: 1}
@@ -612,14 +612,14 @@ PlayerSettings:
   editorAssembliesCompatibilityLevel: 1
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
-  metroPackageName: auto-battler
+  metroPackageName: PocketLegions
   metroPackageVersion: 
   metroCertificatePath: 
   metroCertificatePassword: 
   metroCertificateSubject: 
   metroCertificateIssuer: 
   metroCertificateNotAfter: 0000000000000000
-  metroApplicationDescription: auto-battler
+  metroApplicationDescription: Pocket Legions
   wsaImages: {}
   metroTileShortName: 
   metroTileShowName: 0
@@ -693,7 +693,7 @@ PlayerSettings:
   cloudProjectId: 358326f6-a41d-4139-9dd1-40a473ca9e3c
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: auto-battler
+  projectName: pocket-legions
   organizationId: omarfahdi
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0

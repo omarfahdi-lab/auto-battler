@@ -9,7 +9,7 @@ namespace AutoBattler.Editor
     {
         private const int DefaultRuns = 1000;
 
-        [MenuItem("Auto Battler/Run Balance Simulation")]
+        [MenuItem("Pocket Legions/Run Balance Simulation")]
         public static void RunFromMenu()
         {
             var report = BalanceSimulation.Run(DefaultRuns);

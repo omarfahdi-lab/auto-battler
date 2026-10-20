@@ -65,7 +65,7 @@ namespace AutoBattler.Game
 
             // left panel
             var left = Panel(root);
-            Ribbon(left, "AUTO BATTLER", row: 0);
+            Ribbon(left, "POCKET LEGIONS", row: 0);
             _round = Stat(left, Art.Icon(5));
             _health = Stat(left, Art.Icon(6));
             _gold = Stat(left, Art.Icon(3));

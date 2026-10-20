@@ -36,7 +36,7 @@ namespace AutoBattler.Game
             panel.style.paddingBottom = 60;
             _overlay.Add(panel);
 
-            var title = Hud.Ribbon(panel, "AUTO BATTLER", row: 0);
+            var title = Hud.Ribbon(panel, "POCKET LEGIONS", row: 0);
             title.style.height = 60;
             title.style.fontSize = 30;
             _subtitle = Hud.Text(panel, 16, Hud.MessageText, "Build an army, let it fight, beat the final boss.");

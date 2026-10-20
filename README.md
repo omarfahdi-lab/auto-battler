@@ -1,4 +1,4 @@
-# Auto Battler
+# Pocket Legions
 
 A browser auto battler built in Unity 6. Buy units, arrange them on a grid, and watch them fight on their own.
 Three copies merge into a stronger unit, class synergies and items shape your army, and two boss rounds stand
@@ -7,12 +7,12 @@ a second.
 
 ![The round 5 boss fight, played by the built-in AI demo](docs/gameplay.gif)
 
-**Play in the browser:** _coming soon on itch.io_ <!-- TODO: replace with https://<user>.itch.io/auto-battler -->
+**Play in the browser:** _coming soon on itch.io_ <!-- TODO: replace with https://<user>.itch.io/pocket-legions -->
 · Want to see a run without playing? Choose **Watch the AI Play** in the menu.
 
-| Start menu | Mid-run shop and synergies |
-| ---------- | -------------------------- |
-| ![Start menu](docs/menu.png) | ![Shop with active synergies](docs/shop.png) |
+| Start menu | Round 7 battle with active synergies |
+| ---------- | ------------------------------------ |
+| ![Start menu](docs/menu.png) | ![Round 7 battle](docs/battle.png) |
 
 ## Highlights
 
@@ -223,7 +223,7 @@ A test (`TunedBalance_KeepsTheBotNearTheTargetWinRate`) runs 300 seeded runs and
   dotnet run -c Release -- 1000 1      # runs, first seed, [optional bot gold reserve]
   ```
 
-- **In the editor:** **Auto Battler → Run Balance Simulation** logs the report to the Console.
+- **In the editor:** **Pocket Legions → Run Balance Simulation** logs the report to the Console.
 - **Unity command line** (editor closed):
 
   ```sh
