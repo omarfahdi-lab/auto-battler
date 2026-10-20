@@ -1,14 +1,38 @@
 # Auto Battler
 
-A small grid-based auto battler made in Unity 6 (URP 2D) for the browser. Spend gold in the shop, place units on
-your half of the board, then watch them fight a wave of enemies on their own. Buy three copies of the same unit and
-they merge into a stronger, starred version. Build class synergies, collect items and augments, and beat the final
-boss in round 10 to win.
+A browser auto battler built in Unity 6. Buy units, arrange them on a grid, and watch them fight on their own.
+Three copies merge into a stronger unit, class synergies and items shape your army, and two boss rounds stand
+between you and a win. The difficulty curve was tuned with a headless simulation that plays 1,000 runs in about
+a second.
 
-![Gameplay GIF](docs/gameplay.gif)
-<!-- TODO: record a GIF of a round and save it as docs/gameplay.gif -->
+![The round 5 boss fight, played by the built-in AI demo](docs/gameplay.gif)
 
-**Play it on itch.io:** _coming soon_ <!-- TODO: replace with https://<user>.itch.io/auto-battler -->
+**Play in the browser:** _coming soon on itch.io_ <!-- TODO: replace with https://<user>.itch.io/auto-battler -->
+· Want to see a run without playing? Choose **Watch the AI Play** in the menu.
+
+| Start menu | Mid-run shop and synergies |
+| ---------- | -------------------------- |
+| ![Start menu](docs/menu.png) | ![Shop with active synergies](docs/shop.png) |
+
+## Highlights
+
+- **Engine-free, deterministic rules.** All game logic is plain C# in its own assembly with no UnityEngine
+  reference, covered by 101 EditMode tests. A seed replays a run exactly.
+- **Frame-synced combat.** The battle simulation runs at 10 ticks per second, matching the 10 fps sprite
+  animations, so damage lands on each attack's impact frame and arrows are real projectiles that can miss.
+- **Balance driven by data.** A greedy bot plays the real game API through 1,000 seeded runs. Enemy power budgets
+  were tuned until it wins about 56% of runs without gold piling up. The sim also showed that saving gold for
+  interest loses over a 10-round run, so the game is tuned against the stronger play (details below).
+- **A full meta loop:** interest and streak income, XP levels that change shop odds, 2- and 4-unit class
+  synergies, items and team augments, budget-built enemy waves and two boss rounds.
+- **No editor wiring.** One bootstrap method builds the camera, lighting, UI Toolkit HUD and audio. Sprite sheets
+  are sliced, and the art pack's 9-slice UI pieces stitched, at runtime.
+- **Polish:** start/pause menu, an AI demo mode, sound with pitch variation, screen shake on boss hits, death
+  animations and a 2x battle speed.
+- **CI:** a GameCI workflow runs the tests and builds WebGL on every push and pull request (it needs Unity license
+  secrets; see [CI](#ci)).
+
+**Tech:** Unity 6.6 · C# · URP 2D · UI Toolkit · Input System · NUnit · WebGL · GitHub Actions (GameCI)
 
 ## How to play
 
@@ -105,6 +129,7 @@ class synergies too. **Rounds 5 and 10 are boss rounds:** a 2-star (round 5) or 
 | `Space` | Start the battle (or leave the title screen) |
 | `T` or the Speed button | Toggle battle speed between 1x and 2x |
 | `M` or the Sound button | Mute/unmute (the button cycles 100% → 60% → 30% → off) |
+| `Esc` or the Menu button | Open the menu (pauses the game) / go back |
 
 Sound and speed settings are saved between sessions.
 
@@ -234,8 +259,10 @@ From the command line (close the editor first):
 
 ## Hosting the WebGL build
 
-The build uses Brotli compression, so the server must send `Content-Encoding: br` for the `.br` files. If your host
-doesn't (some don't), turn on **Player Settings → Publishing Settings → Decompression Fallback** before building.
+The build is Brotli-compressed with **Decompression Fallback** on, so it runs on any static host, itch.io included,
+without special server headers. To publish on itch.io, zip the contents of the WebGL build folder (with
+`index.html` at the top level), upload it as an HTML game, and tick "This file will be played in the browser".
+A 960×600 embed matches the default canvas.
 
 ## CI
 
