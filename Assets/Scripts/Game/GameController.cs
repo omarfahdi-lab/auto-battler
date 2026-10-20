@@ -24,6 +24,16 @@ namespace AutoBattler.Game
         private AudioManager _audio;
         private CameraShake _shake;
         private PlayerSettings _settings;
+
+        // "Watch the AI play": the balance-sim bot drives the real game on a timer.
+        private const float AutoStepSeconds = 0.9f;
+        private const float AutoRestartSeconds = 4f;
+        private readonly GreedyBot _bot = new GreedyBot();
+        private bool _autoplay;
+        private bool _autoShopped;
+        private bool _autoRestartPending;
+        private float _autoTimer;
+        private bool _runStarted;
         private Hud _hud;
         private Transform _unitRoot;
         private SpriteRenderer _highlight;
@@ -55,17 +65,23 @@ namespace AutoBattler.Game
             _unitRoot.SetParent(transform, false);
 
             _hud = new Hud(transform);
-            _hud.BuyClicked += Buy;
-            _hud.RerollClicked += Reroll;
-            _hud.SellClicked += SellSelected;
-            _hud.FightClicked += StartBattle;
-            _hud.RestartClicked += NewRun;
-            _hud.BuyXpClicked += BuyXp;
-            _hud.ItemClicked += SelectItem;
-            _hud.RewardChosen += ChooseReward;
+            // While the bot is playing, the shop and battle controls don't respond to the player.
+            _hud.BuyClicked += i => { if (!_autoplay) Buy(i); };
+            _hud.RerollClicked += () => { if (!_autoplay) Reroll(); };
+            _hud.SellClicked += () => { if (!_autoplay) SellSelected(); };
+            _hud.FightClicked += () => { if (!_autoplay) StartBattle(); };
+            _hud.RestartClicked += () => StartRun(autoplay: false);
+            _hud.BuyXpClicked += () => { if (!_autoplay) BuyXp(); };
+            _hud.ItemClicked += i => { if (!_autoplay) SelectItem(i); };
+            _hud.RewardChosen += i => { if (!_autoplay) ChooseReward(i); };
             _hud.VolumeClicked += CycleVolume;
             _hud.SpeedClicked += ToggleSpeed;
-            _hud.PlayClicked += StartFromTitle;
+            _hud.MenuClicked += OpenMenu;
+            _hud.Menu.PlayClicked += PlayOrContinue;
+            _hud.Menu.NewRunClicked += () => StartRun(autoplay: false);
+            _hud.Menu.WatchAiClicked += () => StartRun(autoplay: true);
+            _hud.Menu.VolumeClicked += CycleVolume;
+            _hud.Menu.SpeedClicked += ToggleSpeed;
 
             _settings = PlayerSettings.Deserialize(PlayerPrefs.GetString(SettingsKey, ""));
             ApplySettings();
@@ -77,7 +93,9 @@ namespace AutoBattler.Game
         {
             _session = new GameSession(new SeededRandom(_seed++));
             _battle = null;
-            Time.timeScale = 1f;
+            _autoShopped = false;
+            _autoRestartPending = false;
+            _autoTimer = AutoStepSeconds;
             _selected = null;
             _selectedItem = -1;
             ClearBattleViews();
@@ -303,7 +321,6 @@ namespace AutoBattler.Game
                 return;
             }
             _audio.PlayJingle(EnemyWaves.IsBossRound(_session.Round) ? Jingle.BossRound : Jingle.RoundStart);
-            Time.timeScale = _settings.BattleSpeed;
 
             _selected = null;
             _selectedItem = -1;
@@ -340,7 +357,7 @@ namespace AutoBattler.Game
             int round = _session.Round;
             var result = _session.CompleteBattle(_battle);
             _battle = null;
-            Time.timeScale = 1f;
+            UpdateTimeScale();
             ClearBattleViews();
             _hud.SetMessage(Describe(result));
             if (_session.Phase == Phase.Victory) _audio.PlayJingle(Jingle.Victory);
@@ -446,11 +463,78 @@ namespace AutoBattler.Game
             }
         }
 
-        private void StartFromTitle()
+        // ---- Menu and AI demo -----------------------------------------------------------------------------------
+
+        private void PlayOrContinue()
         {
-            if (!_hud.IsTitleVisible) return;
-            _hud.HideTitle();
+            _runStarted = true;
+            CloseMenu();
+        }
+
+        private void StartRun(bool autoplay)
+        {
+            _autoplay = autoplay;
+            _runStarted = true;
+            NewRun();
+            if (autoplay) _hud.SetMessage("Watching the balance bot play. Press Esc for the menu.");
+            CloseMenu();
+        }
+
+        private void OpenMenu()
+        {
+            if (_hud.Menu.IsVisible) return;
+            _audio.Play(Sfx.Click);
+            _hud.Menu.Open(runInProgress: _runStarted);
+            UpdateTimeScale();
+        }
+
+        private void CloseMenu()
+        {
             _audio.Play(Sfx.Confirm);
+            _hud.Menu.Close();
+            UpdateTimeScale();
+        }
+
+        /// <summary>Paused while the menu is open; battle speed applies only while a battle plays out.</summary>
+        private void UpdateTimeScale()
+        {
+            // Everything in a battle runs on scaled time, so impact frames still line up with the simulation at 2x.
+            Time.timeScale = _hud.Menu.IsVisible ? 0f : _battle != null ? _settings.BattleSpeed : 1f;
+        }
+
+        private void UpdateAutoplay()
+        {
+            if (!_autoplay || _battle != null) return;
+            _autoTimer -= Time.deltaTime;
+            if (_autoTimer > 0f) return;
+            _autoTimer = AutoStepSeconds;
+
+            switch (_session.Phase)
+            {
+                case Phase.Reward:
+                    ChooseReward(_bot.ChooseReward(_session));
+                    break;
+                case Phase.Shop when !_autoShopped:
+                    _bot.PlayShop(_session);
+                    _autoShopped = true;
+                    _audio.Play(Sfx.Buy);
+                    RefreshShopPhase();
+                    break;
+                case Phase.Shop:
+                    _autoShopped = false;
+                    StartBattle();
+                    break;
+                case Phase.Victory:
+                case Phase.Defeat:
+                    // Let the result sink in, then start another demo run.
+                    if (_autoRestartPending) StartRun(autoplay: true);
+                    else
+                    {
+                        _autoRestartPending = true;
+                        _autoTimer = AutoRestartSeconds;
+                    }
+                    break;
+            }
         }
 
         // ---- Settings ------------------------------------------------------------------------------------------
@@ -487,9 +571,7 @@ namespace AutoBattler.Game
         {
             AudioManager.SetMasterVolume(_settings.VolumePercent);
             _hud.ShowSettings(_settings);
-            // Speed only applies while a battle plays out; everything in it runs on scaled time, so impact frames
-            // still line up with the simulation at 2x.
-            Time.timeScale = _battle != null ? _settings.BattleSpeed : 1f;
+            UpdateTimeScale();
         }
 
         // ---- Input --------------------------------------------------------------------------------------------
@@ -498,6 +580,7 @@ namespace AutoBattler.Game
         {
             if (_session == null) return;
             if (_battle != null) UpdateBattle();
+            UpdateAutoplay();
             HandleKeyboard();
             HandleMouse();
         }
@@ -509,11 +592,25 @@ namespace AutoBattler.Game
             if (kb.mKey.wasPressedThisFrame) ToggleMute();
             if (kb.tKey.wasPressedThisFrame) ToggleSpeed();
 
-            if (_hud.IsTitleVisible)
+            if (_hud.Menu.IsVisible)
             {
-                if (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame) StartFromTitle();
+                if (kb.escapeKey.wasPressedThisFrame)
+                {
+                    if (!_hud.Menu.IsOnMainPage) _hud.Menu.Back();
+                    else if (_runStarted) CloseMenu();
+                }
+                else if (_hud.Menu.IsOnMainPage && (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame))
+                {
+                    PlayOrContinue();
+                }
                 return;
             }
+            if (kb.escapeKey.wasPressedThisFrame && !_selected.HasValue && _selectedItem < 0)
+            {
+                OpenMenu();
+                return;
+            }
+            if (_autoplay) return; // the bot is playing; only settings and the menu respond
 
             if (_session.Phase == Phase.Reward)
             {
@@ -537,7 +634,7 @@ namespace AutoBattler.Game
         private void HandleMouse()
         {
             var mouse = Mouse.current;
-            if (mouse == null || _session.Phase != Phase.Shop || _hud.IsTitleVisible) return;
+            if (mouse == null || _session.Phase != Phase.Shop || _hud.Menu.IsVisible || _autoplay) return;
 
             if (mouse.rightButton.wasPressedThisFrame)
             {

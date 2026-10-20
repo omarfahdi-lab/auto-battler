@@ -15,10 +15,10 @@ namespace AutoBattler.Game
     {
         private const float SliceScale = 0.5f;
 
-        private static readonly Color LightText = new Color(1f, 0.97f, 0.88f);
-        private static readonly Color DimText = new Color(0.93f, 0.86f, 0.74f, 0.75f);
+        internal static readonly Color LightText = new Color(1f, 0.97f, 0.88f);
+        internal static readonly Color DimText = new Color(0.93f, 0.86f, 0.74f, 0.75f);
         private static readonly Color InkText = new Color(0.25f, 0.17f, 0.12f);
-        private static readonly Color MessageText = new Color(1f, 0.86f, 0.4f);
+        internal static readonly Color MessageText = new Color(1f, 0.86f, 0.4f);
         private static readonly Color ActiveSynergy = new Color(1f, 0.84f, 0.3f);
         private static readonly Color Outline = new Color(0.12f, 0.08f, 0.06f);
         private static readonly Color Selected = new Color(1f, 0.84f, 0.3f);
@@ -30,13 +30,13 @@ namespace AutoBattler.Game
         private readonly Button[] _shopButtons = new Button[Shop.SlotCount];
         private readonly VisualElement[] _portraits = new VisualElement[Shop.SlotCount];
         private readonly Label[] _shopLabels = new Label[Shop.SlotCount];
-        private readonly Button _reroll, _xp, _sell, _fight, _restart, _volume, _speed;
+        private readonly Button _reroll, _xp, _sell, _fight, _restart, _volume, _speed, _menu;
         private readonly VisualElement _settingsRow;
-        private readonly VisualElement _rewardOverlay, _rewardCards, _titleOverlay;
+        private readonly VisualElement _rewardOverlay, _rewardCards;
         private readonly Label _rewardTitle;
 
         public event Action<int> BuyClicked, ItemClicked, RewardChosen;
-        public event Action RerollClicked, BuyXpClicked, SellClicked, FightClicked, RestartClicked, VolumeClicked, SpeedClicked, PlayClicked;
+        public event Action RerollClicked, BuyXpClicked, SellClicked, FightClicked, RestartClicked, VolumeClicked, SpeedClicked, MenuClicked;
 
         public Hud(Transform parent)
         {
@@ -93,7 +93,7 @@ namespace AutoBattler.Game
             _message.style.marginTop = 8;
             var help = Text(left, 12, DimText);
             help.style.marginTop = 6;
-            help.text = "1-5 buy · R reroll · F XP · S sell · Space fight\nT speed · M mute · Right-click cancel";
+            help.text = "1-5 buy · R reroll · F XP · S sell · Space fight\nT speed · M mute · Esc menu";
 
             // ---- Right: shop ----
             var right = Panel(root);
@@ -119,7 +119,8 @@ namespace AutoBattler.Game
             right.Add(_settingsRow);
             _volume = BigButton(_settingsRow, "", red: false, () => VolumeClicked?.Invoke());
             _speed = BigButton(_settingsRow, "", red: false, () => SpeedClicked?.Invoke());
-            foreach (var b in new[] { _volume, _speed })
+            _menu = BigButton(_settingsRow, "Menu", red: false, () => MenuClicked?.Invoke());
+            foreach (var b in new[] { _volume, _speed, _menu })
             {
                 b.style.flexGrow = 1;
                 b.style.height = 36;
@@ -142,65 +143,14 @@ namespace AutoBattler.Game
             _rewardCards.style.justifyContent = Justify.SpaceBetween;
             rewardPanel.Add(_rewardCards);
 
-            _titleOverlay = BuildTitle(root);
+            // Added last so it draws above everything else.
+            Menu = new StartMenu(root);
         }
 
-        // ---- Title screen ----
+        /// <summary>The start/pause menu overlay.</summary>
+        public StartMenu Menu { get; }
 
-        private VisualElement BuildTitle(VisualElement root)
-        {
-            var overlay = Overlay(root, 0.7f);
-            overlay.style.display = DisplayStyle.Flex;
-
-            var panel = new VisualElement();
-            ApplySlices(panel, Art.WoodPanel());
-            panel.style.width = 560;
-            panel.style.paddingLeft = panel.style.paddingRight = 40;
-            panel.style.paddingTop = 22;
-            panel.style.paddingBottom = 48;
-            overlay.Add(panel);
-
-            var title = Ribbon(panel, "AUTO BATTLER", row: 0);
-            title.style.height = 60;
-            title.style.fontSize = 30;
-            var tagline = Text(panel, 16, MessageText, "Build an army, let it fight, survive ten rounds.");
-            tagline.style.unityTextAlign = TextAnchor.MiddleCenter;
-            tagline.style.marginBottom = 12;
-
-            Heading(panel, "How to play");
-            foreach (var line in new[]
-            {
-                "Buy units in the shop, then click a unit and a tile to place it on your (blue) half.",
-                "Press FIGHT. Units battle on their own; losing costs health.",
-                "Three copies of a unit merge into a stronger star level.",
-                "Field 2 or 4 of a class for a synergy bonus.",
-                "Win rounds to pick items and team augments. Rounds 5 and 10 are bosses: beat round 10 to win.",
-                "Buy XP to field more units and find 3g units more often. Gold pays interest, but spending usually wins.",
-            })
-            {
-                // The built-in runtime font has no bullet glyph, so use a dash.
-                var row = Text(panel, 14, LightText, "-  " + line);
-                row.style.marginBottom = 4;
-            }
-
-            var keys = Text(panel, 12, DimText,
-                "Keys: 1-5 buy · R reroll · F XP · S sell · Space fight · T speed · M mute");
-            keys.style.marginTop = 8;
-            keys.style.unityTextAlign = TextAnchor.MiddleCenter;
-
-            var play = BigButton(panel, "PLAY  [Space]", red: false, () => PlayClicked?.Invoke());
-            play.style.height = 56;
-            play.style.fontSize = 22;
-            play.style.marginTop = 14;
-            play.style.marginLeft = play.style.marginRight = 110;
-            return overlay;
-        }
-
-        public bool IsTitleVisible => _titleOverlay.style.display == DisplayStyle.Flex;
-
-        public void HideTitle() => _titleOverlay.style.display = DisplayStyle.None;
-
-        private static VisualElement Overlay(VisualElement root, float dim)
+        internal static VisualElement Overlay(VisualElement root, float dim)
         {
             var overlay = new VisualElement();
             overlay.style.position = Position.Absolute;
@@ -229,8 +179,9 @@ namespace AutoBattler.Game
 
         public void ShowSettings(PlayerSettings settings)
         {
-            _volume.text = settings.IsMuted ? "Sound off [M]" : $"Sound {settings.VolumePercent}% [M]";
-            _speed.text = $"Speed {settings.BattleSpeed}x [T]";
+            _volume.text = settings.IsMuted ? "Sound off" : $"Sound {settings.VolumePercent}%";
+            _speed.text = $"Speed {settings.BattleSpeed}x";
+            Menu.ShowSettings(settings);
         }
 
         public void ShowRewards(IReadOnlyList<RewardOption> options, bool bossReward)
@@ -414,7 +365,7 @@ namespace AutoBattler.Game
             return panel;
         }
 
-        private static Label Ribbon(VisualElement parent, string text, int row)
+        internal static Label Ribbon(VisualElement parent, string text, int row)
         {
             var label = new Label(text);
             ApplySlices(label, Art.Ribbon(row));
@@ -430,7 +381,7 @@ namespace AutoBattler.Game
             return label;
         }
 
-        private static void Heading(VisualElement parent, string text)
+        internal static void Heading(VisualElement parent, string text)
         {
             var label = Text(parent, 13, MessageText, text.ToUpperInvariant());
             label.style.marginTop = 6;
@@ -456,7 +407,7 @@ namespace AutoBattler.Game
             return label;
         }
 
-        private static Label Text(VisualElement parent, int size, Color color, string text = "")
+        internal static Label Text(VisualElement parent, int size, Color color, string text = "")
         {
             var label = new Label(text);
             label.style.fontSize = size;
@@ -467,7 +418,7 @@ namespace AutoBattler.Game
             return label;
         }
 
-        private static Button BigButton(VisualElement parent, string text, bool red, Action onClick)
+        internal static Button BigButton(VisualElement parent, string text, bool red, Action onClick)
         {
             var button = new Button(onClick) { text = text };
             var regular = Art.BigButton(red, pressed: false);
@@ -491,7 +442,7 @@ namespace AutoBattler.Game
             return button;
         }
 
-        private static void ApplySlices(VisualElement element, SlicedTexture art)
+        internal static void ApplySlices(VisualElement element, SlicedTexture art)
         {
             element.style.backgroundImage = new StyleBackground(art.Texture);
             element.style.unitySliceLeft = art.Left;
